@@ -1,0 +1,18 @@
+<html>
+  <body>
+  <table>
+    {% for entry in entries %}
+    <tr>
+    <td>  {{ entry.name }} &nbsp;-&nbsp;
+      {% if entry.restricted %}
+        <a href="{{ entry.key().id() }}_res">restricted</a>
+      {% endif %}
+      {% if entry.unrestricted %}
+        <a href="{{ entry.key().id() }}_unres">over 18</a>
+      {% endif %}
+      &nbsp;&nbsp;<b>{{ entry.name }}</b>
+      <br>
+    </tr>
+    {% endfor %}
+  </body>
+</html>
