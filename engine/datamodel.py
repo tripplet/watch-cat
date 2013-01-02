@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import datetime
+import os, hashlib
 from google.appengine.ext import db
 
 class PollEvent(db.Model):
@@ -9,18 +10,18 @@ class PollEvent(db.Model):
   poll_type  = db.StringProperty(default='http', choices=set(['raw', 'http']))
 
 class EmailAction(db.Model):
-  address    = db.EmailProperty(required=True)
   enabled    = db.BooleanProperty(required=True, default=False)
+  address    = db.EmailProperty(required=True)
   message    = db.StringProperty()
 
 class WebrequestAction(db.Model):
-  url        = db.LinkProperty(required=True)
   enabled    = db.BooleanProperty(required=True, default=False)
+  url        = db.LinkProperty(required=True)
   message    = db.StringProperty()
 
 class IMAction(db.Model):
-  im         = db.IMProperty(required=True)
   enabled    = db.BooleanProperty(required=True, default=False)
+  im         = db.IMProperty(required=True)
   message    = db.StringProperty()
 
 
@@ -35,3 +36,6 @@ class WatchJob(db.Model):
   lastseen   = db.DateTimeProperty()
   actions    = db.ListProperty(db.Key)
   poll       = db.ReferenceProperty(PollEvent)
+
+  def generateSecret(self):
+    self.secret = hashlib.sha1(os.urandom(1024)).hexdigest()
