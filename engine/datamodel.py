@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import datetime
 import os, hashlib
 from google.appengine.ext import db
 
@@ -33,7 +32,8 @@ class WatchJob(db.Model):
   created    = db.DateTimeProperty(required=True, auto_now_add=True)
   secret     = db.StringProperty()
   last_fail  = db.DateTimeProperty()
-  lastseen   = db.DateTimeProperty()
+  last_seen  = db.DateTimeProperty()
+  last_ip    = db.StringProperty()
   actions    = db.ListProperty(db.Key)
   poll       = db.ReferenceProperty(PollEvent)
 
