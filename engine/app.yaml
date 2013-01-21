@@ -4,13 +4,22 @@ runtime: python27
 api_version: 1
 threadsafe: yes
 
+
 handlers:
-- url: /favicon\.ico
-  static_files: favicon.ico
-  upload: favicon\.ico
+- url: /(.*\.(html|ico|png|jpg|gif))
+  static_files: static/\1
+  upload: static/(.*\.(html|ico|png|jpg|gif))
+
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
+
+- url: /job/(\w*)
+  script: jobhandler.app
 
 - url: .*
   script: main.app
+
 
 libraries:
 - name: webapp2
