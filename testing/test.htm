@@ -9,6 +9,8 @@
     $(function() {
         $("#tabs").tabs();
         $("#radio").buttonset();
+        $("button").button();
+        $("#spinner").spinner();
     });
     </script>
 </head>
@@ -16,22 +18,34 @@
 
   <div id="tabs">
     <ul>
+        <li><a href="#tabs-overview">Overview</a></li>
         <li><a href="#tabs-1">Scratchy (PB)</a></li>
         <li><a href="#tabs-create">+</a></li>
     </ul>
+    <div id="tabs-overview">
+    </div>
     <div id="tabs-1">
       <form>
-        Status:
+        <div class="entry_name">Status:</div>
         <div id="radio">
           <input type="radio" id="radio1" name="radio" /><label for="radio1">Enabled</label>
           <input type="radio" id="radio2" name="radio" checked="checked" /><label for="radio2">Disabled</label>
         </div>
-        Created:
-        Last Fail:
-        Last Seen:
-        Interval:
-        URL:
-        Actions
+        <div class="entry_name">Created:</div>
+        <div class="entry_name">Last Fail:</div>
+        <div class="entry_name">Last Seen:</div>
+        <div>
+          <label for="url">Last IP:</label>
+        </div>
+         <div>
+        <label for="interval">Interval:</label>
+        <input id="spinner" name="value"/>
+        </div>
+        <div>
+        <label for="url">URL:</label>
+        <input id="url" size="60" value="http://watch-cat.appspot.com/job/aksjdlkals72ksasda" readonly/><button>Generate new url</button>
+        </div>
+        <div class="entry_name">Actions:</div>
       </from>
 </form>
     </div>
