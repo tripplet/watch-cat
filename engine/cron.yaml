@@ -1,0 +1,4 @@
+cron:
+- description: cleanup database
+  url: /cron/cleanup
+  schedule: every 2 hours

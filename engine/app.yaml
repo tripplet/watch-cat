@@ -1,5 +1,5 @@
 application: watch-cat
-version: 1
+version: 2
 runtime: python27
 api_version: 1
 threadsafe: yes
@@ -16,6 +16,10 @@ handlers:
 
 - url: /job/(\w*)
   script: jobhandler.app
+
+- url: /cron/.*
+  script: cron.app
+  login: admin # secure cronjobs (no access for normal user)
 
 - url: .*
   script: main.app
