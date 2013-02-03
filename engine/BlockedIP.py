@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timedelta, datetime
 from google.appengine.ext import db
 
 class BlockedIP(db.Model):
@@ -17,7 +17,7 @@ class BlockedIP(db.Model):
       return (datetime.now() < entry.blocked_until)
 
   @staticmethod
-  def updateRemote(remote_ip):
+  def setBlocked(remote_ip):
     entry = BlockedIP.all().filter('remote_ip =', remote_ip).get()
 
     if entry is None:
@@ -25,6 +25,14 @@ class BlockedIP(db.Model):
     else:
       entry.invalid_requests = entry.invalid_requests + 1
 
+      # block ip after 10 invalid requests for 1 hour
+      if entry.invalid_requests >= 10:
+        entry.blocked_until = datetime.now() + timedelta(minutes=1)
+
     entry.last_invalid = datetime.now()
     entry.put()
 
+  @staticmethod
+  def removeOutdated():
+    for p in BlockedIP.all().filter('blocked_until < ', datetime.now()):
+      p.delete()

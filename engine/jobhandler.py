@@ -2,7 +2,6 @@
 
 import webapp2
 from datetime import datetime
-from pytz.gae import pytz
 
 from BlockedIP import BlockedIP
 from WatchJob import WatchJob
@@ -16,10 +15,10 @@ class JobHandler(webapp2.RequestHandler):
 
     # invalid key
     if job is None :
-      BlockedIP.updateRemote(self.request.remote_addr)
+      BlockedIP.setBlocked(self.request.remote_addr)
       self.abort(400)
 
-    job.last_seen = datetime.now(pytz.timezone('Europe/Berlin'))
+    job.last_seen = datetime.now()
     job.last_ip   = self.request.remote_addr
 
     job.put()
