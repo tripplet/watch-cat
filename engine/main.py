@@ -25,4 +25,4 @@ class CreateJob(webapp2.RequestHandler):
       self.response.write('Done')
 
 app = webapp2.WSGIApplication([('/', MainHandler),
-                               ('/create', CreateJob)], debug=True)
+                               ('/create', CreateJob)], debug=False)
