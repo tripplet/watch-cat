@@ -14,7 +14,6 @@ class PushOverAction(Action):
       return
 
     self.updatePerformed()
-    logging.info('PushOverAction::performAction')
 
     for user_key in self.userkeys:
       logging.info('PushOverAction::performAction to:%s', user_key)
