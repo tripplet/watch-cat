@@ -22,9 +22,6 @@ class PollEvent(db.Model):
   poll_type  = db.StringProperty(default='http', choices=set(['raw', 'http']))
 
 
-class EmailAction(Action, db.Model):
-  address    = db.EmailProperty(required=True)
-
 
 class WebrequestAction(Action):
   url        = db.LinkProperty(required=True)

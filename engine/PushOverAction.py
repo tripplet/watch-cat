@@ -16,7 +16,7 @@ class PushOverAction(Action):
     self.updatePerformed()
 
     for user_key in self.userkeys:
-      logging.info('PushOverAction::performAction to:%s', user_key)
+      logging.info('PushOverAction sending message')
       conn = httplib.HTTPSConnection("api.pushover.net:443")
       conn.request("POST", "/1/messages.json",
         urllib.urlencode({

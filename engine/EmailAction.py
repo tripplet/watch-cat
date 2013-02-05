@@ -1,6 +1,7 @@
+import logging
+
 from google.appengine.api import mail
 from google.appengine.ext import db
-
 from datamodels import Action
 
 appengine_mailadress = ''
@@ -14,6 +15,8 @@ class EmailAction(Action):
       return
 
     self.updatePerformed()
+    logging.info('EmailAction sending to:%s', self.address)
+
     mail.send_mail(sender  = appengine_mailadress,
                    to      = self.address,
                    subject = self.subject,

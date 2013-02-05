@@ -3,6 +3,7 @@
 import webapp2
 from WatchJob import WatchJob
 from PushOverAction import PushOverAction
+from EmailAction import EmailAction
 from datetime import datetime
 
 
@@ -25,11 +26,14 @@ class CreateJob(webapp2.RequestHandler):
     def get(self):
       new_job = WatchJob(name='new_job', interval=30)
 
-      action = PushOverAction(enabled=True, token='', message='test')
-      action.userkeys = ['']
-      action.put()
+      action1 = PushOverAction(enabled=True, token='***REMOVED***', message='test')
+      action1.userkeys = ['***REMOVED***']
+      action1.put()
 
-      new_job.actions = [action.key()]
+      action2 = EmailAction(enabled=True, address = '***REMOVED***', subject='watch-cat: ', message='test')
+      action2.put()
+
+      new_job.actions = [action1.key(), action2.key()]
       new_job.generateSecret()
       new_job.put()
 
