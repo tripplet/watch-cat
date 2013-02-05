@@ -1,7 +1,18 @@
+from datetime import datetime
 from google.appengine.ext import db
 
 class Action(db.Model):
-  def performAction():
+  enabled        = db.BooleanProperty(required=True, default=False)
+  last_performed = db.DateTimeProperty()
+  message        = db.StringProperty()
+
+
+  def updatePerformed(self):
+    self.last_performed = datetime.now()
+    self.put()
+
+
+  def performAction(self):
     pass
 
 
@@ -10,17 +21,15 @@ class PollEvent(db.Model):
   port       = db.IntegerProperty(required=True)
   poll_type  = db.StringProperty(default='http', choices=set(['raw', 'http']))
 
+
 class EmailAction(Action, db.Model):
-  enabled    = db.BooleanProperty(required=True, default=False)
   address    = db.EmailProperty(required=True)
-  message    = db.StringProperty()
+
 
 class WebrequestAction(Action):
-  enabled    = db.BooleanProperty(required=True, default=False)
   url        = db.LinkProperty(required=True)
-  message    = db.StringProperty()
+
 
 class IMAction(Action):
-  enabled    = db.BooleanProperty(required=True, default=False)
   im         = db.IMProperty(required=True)
-  message    = db.StringProperty()
+

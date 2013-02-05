@@ -18,10 +18,7 @@ class JobHandler(webapp2.RequestHandler):
       BlockedIP.updateBlocked(self.request.remote_addr)
       self.abort(400)
 
-    job.last_seen = datetime.now()
-    job.last_ip   = self.request.remote_addr
-
-    job.put()
+    job.update(self.request.remote_addr)
 
 
 # Main handler ######################################################################

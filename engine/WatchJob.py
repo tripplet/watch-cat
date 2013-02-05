@@ -1,8 +1,8 @@
 import os, hashlib
 from datetime import datetime, timedelta
+
 from google.appengine.ext import db
 
-from datamodels import PollEvent, Action
 
 class WatchJob(db.Model):
   name       = db.StringProperty(required=True)
@@ -14,17 +14,43 @@ class WatchJob(db.Model):
   last_fail  = db.DateTimeProperty()
   last_seen  = db.DateTimeProperty()
   last_ip    = db.StringProperty()
-  actions    = db.ReferenceProperty(Action)
-  poll       = db.ReferenceProperty(PollEvent)
+  actions    = db.ListProperty(db.Key)
+  poll       = db.ReferenceProperty()
+
 
   def generateSecret(self):
     self.secret = hashlib.sha1(os.urandom(1024)).hexdigest()
 
+
+  def update(self, remote_ip):
+    self.last_seen = datetime.now()
+    self.last_ip   = remote_ip
+    self.put()
+
+
   @staticmethod
   def checkJobs():
-    jobs = WatchJob.all().filter('enabled =', True)
+    jobs = WatchJob.all().filter('enabled =', True).run()
 
+    # check all enabled jobs
     for entry in jobs:
+
+      # check if job is overdue
       if entry.last_seen + timedelta(minutes=entry.interval) < datetime.now():
-        for action in entry.actions:
-          action.performAction()
+
+        # perform all actions
+        for action_key in entry.actions:
+          db.get(action_key).performAction()
+
+
+  @staticmethod
+  def testJobActions(job_name):
+    job = WatchJob.all().filter('name =', job_name).get()
+
+    if job == None:
+      return False
+
+    for action_key in job.actions:
+      db.get(action_key).performAction()
+
+    return True
