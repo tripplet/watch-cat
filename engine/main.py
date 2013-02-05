@@ -10,7 +10,7 @@ from datetime import datetime
 class MainHandler(webapp2.RequestHandler):
     def get(self):
       jobs = WatchJob.all()
-      self.response.write('<b><i>ServerTime: </i></b>' + datetime.now().strftime('%H:%M:%S - %d.%m.%Y') + '<br><br>')
+      self.response.write('<b><i>ServerTime: </i></b>' + datetime.now().strftime('%H:%M:%S') + '<br><br>')
 
       for job in jobs:
         if job.last_seen == None:
