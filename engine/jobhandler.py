@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import webapp2
-from datetime import datetime
 
 from BlockedIP import BlockedIP
 from WatchJob import WatchJob
