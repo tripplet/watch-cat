@@ -14,8 +14,8 @@ class JobHandler(webapp2.RequestHandler):
     job = WatchJob.all().filter('secret =', key).get()
 
     # invalid key
-    if job is None :
-      BlockedIP.setBlocked(self.request.remote_addr)
+    if job is None:
+      BlockedIP.updateBlocked(self.request.remote_addr)
       self.abort(400)
 
     job.last_seen = datetime.now()

@@ -17,7 +17,7 @@ class BlockedIP(db.Model):
       return (datetime.now() < entry.blocked_until)
 
   @staticmethod
-  def setBlocked(remote_ip):
+  def updateBlocked(remote_ip):
     entry = BlockedIP.all().filter('remote_ip =', remote_ip).get()
 
     if entry is None:
