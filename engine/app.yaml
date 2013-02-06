@@ -6,13 +6,9 @@ threadsafe: yes
 
 
 handlers:
-- url: /(.*\.(html|ico|png|jpg|gif))
+- url: /(.*\.(html|ico|png|jpg|gif|txt))
   static_files: static/\1
-  upload: static/(.*\.(html|ico|png|jpg|gif))
-
-- url: /robots.txt
-  static_files: static/robots.txt
-  upload: static/robots.txt
+  upload: static/(.*\.(html|ico|png|jpg|gif|txt))
 
 - url: /job/(\w*)
   script: jobhandler.app
