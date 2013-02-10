@@ -1,0 +1,9 @@
+.enabled-job {
+  background: #009245;
+  border: #009245;
+}
+
+.disabled-job {
+  background: #ed1c24;
+  border: #ed1c24;
+}
