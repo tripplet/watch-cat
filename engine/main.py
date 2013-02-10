@@ -1,11 +1,27 @@
 #!/usr/bin/env python
 
 import webapp2
+import jinja2
+import os
 from WatchJob import WatchJob
 from PushOverAction import PushOverAction
 from EmailAction import EmailAction
 from datetime import datetime
 
+jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
+
+class MobileHandler(webapp2.RequestHandler):
+    def get(self):
+      template = jinja_environment.get_template('templates/main_template.htm')
+
+      jobs = WatchJob.all().run()
+
+      template_values = {
+        'timestring': datetime.now().strftime('%H:%M:%S'),
+        'jobs': jobs
+      }
+
+      self.response.out.write(template.render(template_values))
 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
@@ -46,5 +62,6 @@ class NofifyTest(webapp2.RequestHandler):
 
 
 app = webapp2.WSGIApplication([('/', MainHandler),
+                               ('/m', MobileHandler),
                                ('/create', CreateJob),
                                ('/notify/(\w+)', NofifyTest)], debug=False)
