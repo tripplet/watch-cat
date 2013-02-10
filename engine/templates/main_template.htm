@@ -16,15 +16,16 @@
   </script>
 </head>
 <body>
-<div data-theme="a" data-role="header" data-position="fixed">
+<div data-theme="b" data-role="header" data-position="fixed">
   <h1>Watch-Cat&nbsp;-&nbsp;{{ timestring }}</h1>
+  <a href="#" onClick="window.location.reload()" class="ui-btn-right" data-icon="refresh" data-theme="b" data-iconpos="notext">Aktuallisieren</a>
 </div>
 <div data-role="content">
   {% for entry in jobs %}
   <ul data-role="listview" data-divider-theme="b" data-inset="true">
     <li data-role="list-divider" class="{% if entry.enabled %}enabled-job{% else %}disabled-job{% endif %}" role="heading">{{ entry.name }}</li>
-    <li data-theme="c">Last seen:&nbsp;<span class="ui-li-aside">{{ entry.last_seen|formatDateTime }}</span></li>
-    <li data-theme="c">IP:&nbsp;<span class="ui-li-aside">{{ entry.last_ip }}</span></li>
+    <li data-theme="c">{{ entry.last_seen|formatDateTime }}<span class="ui-li-count">Last seen</span></li>
+    <li data-theme="c">{{ entry.last_ip }}<span class="ui-li-count">IP</span></li>
   </ul>
   {% endfor %}
 </div>

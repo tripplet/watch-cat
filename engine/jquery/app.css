@@ -7,3 +7,9 @@
   background: #ed1c24;
   border: #ed1c24;
 }
+
+/* More space for title in header */
+.ui-header .ui-title {
+    margin-right: 10%;
+    margin-left: 10%;
+}
