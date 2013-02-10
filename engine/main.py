@@ -11,6 +11,13 @@ from datetime import datetime
 jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
 
 class MobileHandler(webapp2.RequestHandler):
+    @staticmethod
+    def formatDateTime(value):
+      if value == None:
+        return 'Never'
+      else:
+        return value.strftime('%H:%M:%S - %d.%m.%Y')
+
     def get(self):
       template = jinja_environment.get_template('templates/main_template.htm')
 
@@ -60,6 +67,7 @@ class NofifyTest(webapp2.RequestHandler):
     def get(self, job_name):
       WatchJob.testJobActions(job_name)
 
+jinja_environment.filters['formatDateTime'] = MobileHandler.formatDateTime
 
 app = webapp2.WSGIApplication([('/', MainHandler),
                                ('/m', MobileHandler),

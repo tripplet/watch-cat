@@ -19,15 +19,14 @@
 </head>
 <body>
 <div data-theme="b" data-role="header" data-position="fixed">
-  <h1>Watch-Cat</h1>
-  <h4>{{ timestring }}</h4>
+  <h1>Watch-Cat&nbsp;-&nbsp;{{ timestring }}</h1>
 </div>
 <div data-role="content">
   {% for entry in jobs %}
   <ul data-role="listview" data-divider-theme="b" data-inset="true">
     <li data-role="list-divider" role="heading">{{ entry.name }}</li>
-    <li data-theme="c">Last seen:&nbsp;<span class="ui-li-count">{{ entry.last_seen }}</span></li>
-    <li data-theme="c">IP:&nbsp;<span class="ui-li-count">{{ entry.last_ip }}</span></li>
+    <li data-theme="c">Last seen:&nbsp;<span class="ui-li-aside">{{ entry.last_seen|formatDateTime }}</span></li>
+    <li data-theme="c">IP:&nbsp;<span class="ui-li-aside">{{ entry.last_ip }}</span></li>
   </ul>
   {% endfor %}
 </div>
