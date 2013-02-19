@@ -13,3 +13,10 @@
     margin-right: 10%;
     margin-left: 10%;
 }
+
+/* Improved style for desktop */
+.ui-content {
+  max-width: 30em;
+  margin-left: auto;
+  margin-right: auto;
+}
