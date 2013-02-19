@@ -10,7 +10,7 @@ class CronHandler(webapp2.RequestHandler):
         BlockedIP.removeOutdated()
         self.response.out.write('Done!')
       elif action == 'checkjobs':
-        WatchJob.checkJobs()
+        WatchJob.checkAllJobs()
         self.response.out.write('Done!')
 
 

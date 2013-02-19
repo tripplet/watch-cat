@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 
 from google.appengine.ext import db
 
+# import all possible actions so .performAction() in check() works
+from PushOverAction import PushOverAction
+from EmailAction import EmailAction
 
 class WatchJob(db.Model):
   name       = db.StringProperty(required=True)
@@ -27,20 +30,21 @@ class WatchJob(db.Model):
     self.last_ip   = remote_ip
     self.put()
 
+  def check(self):
+    # check if job is overdue
+    if self.last_seen + timedelta(minutes=self.interval) < datetime.now():
+      # perform all actions
+      for action_key in self.actions:
+        db.get(action_key).performAction()
+
 
   @staticmethod
-  def checkJobs():
+  def checkAllJobs():
     jobs = WatchJob.all().filter('enabled =', True).run()
 
     # check all enabled jobs
     for entry in jobs:
-
-      # check if job is overdue
-      if entry.last_seen + timedelta(minutes=entry.interval) < datetime.now():
-
-        # perform all actions
-        for action_key in entry.actions:
-          db.get(action_key).performAction()
+      entry.check()
 
 
   @staticmethod
