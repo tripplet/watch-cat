@@ -1,6 +1,8 @@
 import os, hashlib
 from datetime import datetime, timedelta
 
+from google.appengine.api import taskqueue
+from google.appengine.api.taskqueue import Queue, Task
 from google.appengine.ext import db
 
 # import all possible actions so .performAction() in check() works
@@ -19,6 +21,7 @@ class WatchJob(db.Model):
   last_ip    = db.StringProperty()
   actions    = db.ListProperty(db.Key)
   poll       = db.ReferenceProperty()
+  task_name  = db.StringProperty()
 
 
   def generateSecret(self):
@@ -29,6 +32,20 @@ class WatchJob(db.Model):
     self.last_seen = datetime.now()
     self.last_ip   = remote_ip
     self.put()
+
+    # delete previous (waiting) task
+    if (self.task_name != None):
+      logging.info('old task: ' + self.task_name)
+      Queue.delete_tasks(Queue(), Task(name=self.task_name))
+
+    task_name = self.name + '_' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+
+    # create task to be executed in updated no called in interval minutes
+    taskqueue.add(name=task_name, url='/task', params={'key': self.key()}, countdown=(self.interval + 1)*60)
+
+    self.task_name = task_name
+    self.put()
+
 
   def check(self):
     # check if job is overdue

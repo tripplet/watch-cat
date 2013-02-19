@@ -20,6 +20,10 @@ handlers:
   script: cron.app
   login: admin # secure cronjobs (no access for normal user)
 
+- url: /task
+  script: TaskQueue.app
+  login: admin # secure cronjobs (no access for normal user)
+
 - url: .*
   script: main.app
   login: admin # secure
