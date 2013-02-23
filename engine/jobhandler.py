@@ -6,7 +6,12 @@ from BlockedIP import BlockedIP
 from WatchJob import WatchJob
 
 class JobHandler(webapp2.RequestHandler):
-  def get(self, key):
+  def get(self):
+    try:
+      key = self.request.get('key')
+    except:
+      self.abort(400)
+
     if BlockedIP.isRemoteBlocked(self.request.remote_addr):
       self.abort(400)
 
@@ -22,6 +27,6 @@ class JobHandler(webapp2.RequestHandler):
 
 # Main handler ######################################################################
 # ###################################################################################
-app = webapp2.WSGIApplication([('/job/(\w*)', JobHandler)], debug=False)
+app = webapp2.WSGIApplication([('/job', JobHandler)], debug=False)
 # ###################################################################################
 # ###################################################################################

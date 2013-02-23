@@ -13,7 +13,7 @@ handlers:
   static_files: static/\1
   upload: static/(.*\.(html|ico|png|jpg|gif|txt))
 
-- url: /job/(\w*)
+- url: /job
   script: jobhandler.app
 
 - url: /cron/.*
