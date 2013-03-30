@@ -14,7 +14,7 @@ class BlockedIP(db.Model):
     if entry is None or entry.blocked_until is None:
       return False
     else:
-      return (datetime.now() < entry.blocked_until)
+      return (datetime.utcnow() < entry.blocked_until)
 
   @staticmethod
   def updateBlocked(remote_ip):
@@ -27,12 +27,12 @@ class BlockedIP(db.Model):
 
       # block ip after 10 invalid requests for 1 hour
       if entry.invalid_requests >= 10:
-        entry.blocked_until = datetime.now() + timedelta(minutes=1)
+        entry.blocked_until = datetime.utcnow() + timedelta(minutes=1)
 
-    entry.last_invalid = datetime.now()
+    entry.last_invalid = datetime.utcnow()
     entry.put()
 
   @staticmethod
   def removeOutdated():
-    for p in BlockedIP.all().filter('blocked_until < ', datetime.now()):
+    for p in BlockedIP.all().filter('blocked_until < ', datetime.utcnow()):
       p.delete()

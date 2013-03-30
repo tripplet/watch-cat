@@ -1,4 +1,5 @@
 import os, hashlib
+import logging
 from datetime import datetime, timedelta
 
 from google.appengine.api import taskqueue
@@ -29,7 +30,7 @@ class WatchJob(db.Model):
 
 
   def update(self, remote_ip):
-    self.last_seen = datetime.now()
+    self.last_seen = datetime.utcnow()
     self.last_ip   = remote_ip
     self.put()
 
@@ -38,7 +39,7 @@ class WatchJob(db.Model):
       logging.info('old task: ' + self.task_name)
       Queue.delete_tasks(Queue(), Task(name=self.task_name))
 
-    task_name = self.name + '_' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+    task_name = self.name + '_' + datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S-%f')
 
     # create task to be executed in updated no called in interval minutes
     taskqueue.add(name=task_name, url='/task', params={'key': self.key()}, countdown=(self.interval + 1)*60)
@@ -49,7 +50,7 @@ class WatchJob(db.Model):
 
   def check(self):
     # check if job is overdue
-    if self.last_seen + timedelta(minutes=self.interval) < datetime.now():
+    if self.last_seen + timedelta(minutes=self.interval) < datetime.utcnow():
       # perform all actions
       for action_key in self.actions:
         db.get(action_key).performAction()

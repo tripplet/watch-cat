@@ -8,7 +8,7 @@ class Action(db.Model):
 
 
   def updatePerformed(self):
-    self.last_performed = datetime.now()
+    self.last_performed = datetime.utcnow()
     self.put()
 
 

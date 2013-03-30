@@ -4,6 +4,7 @@ import webapp2
 import jinja2
 import os
 from WatchJob import WatchJob
+from German_tzinfo import German_tzinfo
 from PushOverAction import PushOverAction
 from EmailAction import EmailAction
 from datetime import datetime
@@ -13,18 +14,20 @@ jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.di
 class MobileHandler(webapp2.RequestHandler):
     @staticmethod
     def formatDateTime(value):
+      german_time = German_tzinfo()
       if value == None:
         return 'Never'
       else:
-        return value.strftime('%H:%M:%S - %d.%m.%Y')
+        return german_time.utcToLocal(value).strftime('%H:%M:%S - %d.%m.%Y')
 
     def get(self):
+      german_time = German_tzinfo()
       template = jinja_environment.get_template('templates/main_template.htm')
 
       jobs = WatchJob.all().run()
 
       template_values = {
-        'timestring': datetime.now().strftime('%H:%M:%S'),
+        'timestring': german_time.utcToLocal(datetime.utcnow()).strftime('%H:%M:%S'),
         'jobs': jobs
       }
 
@@ -32,14 +35,16 @@ class MobileHandler(webapp2.RequestHandler):
 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
+      german_time = German_tzinfo()
+
       jobs = WatchJob.all()
-      self.response.write('<b><i>ServerTime: </i></b>' + datetime.now().strftime('%H:%M:%S') + '<br><br>')
+      self.response.write('<b><i>ServerTime: </i></b>' + german_time.utcToLocal(datetime.utcnow()).strftime('%H:%M:%S') + '<br><br>')
 
       for job in jobs:
         if job.last_seen == None:
           job_lastseen = 'Never'
         else:
-          job_lastseen = job.last_seen.strftime('%H:%M:%S - %d.%m.%Y')
+          job_lastseen = german_time.utcToLocal(job.last_seen).strftime('%H:%M:%S - %d.%m.%Y')
 
         self.response.write('<b>%s</b> <a href="/notify/%s">[testNotification]</a><br>%s<br>%s<br><br>' %
           (job.name, job.name, job_lastseen, job.last_ip))

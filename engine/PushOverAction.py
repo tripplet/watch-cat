@@ -20,8 +20,8 @@ class PushOverAction(Action):
       conn = httplib.HTTPSConnection("api.pushover.net:443")
       conn.request("POST", "/1/messages.json",
         urllib.urlencode({
-          "token": self.token,
-          "user": user_key,
+          "token":   self.token,
+          "user":    user_key,
           "message": self.message,
         }), { "Content-type": "application/x-www-form-urlencoded" })
       conn.getresponse()
