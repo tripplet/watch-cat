@@ -1,0 +1,36 @@
+<html>
+<head>
+  <meta content="yes" name="apple-mobile-web-app-capable"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1 minimum-scale=1.0, maximum-scale=0.6667, user-scalable=no">
+  <link rel="apple-touch-icon" href="/favicon.png"/>
+  <link rel="stylesheet" href="/jquery/jquery.mobile-1.2.0.min.css"/>
+  <link rel="stylesheet" href="/jquery/app.css"/>
+  <script src="/jquery/jquery-1.8.2.min.js"></script>
+  <script src="/jquery/jquery.mobile-1.2.0.min.js"></script>
+
+  <script type="text/javascript">
+  if (window.screen.height==568) { // iPhone5 with 4"
+    document.querySelector("meta[name=viewport]").content="width=320.1";
+  }
+  </script>
+</head>
+<body>
+<div data-theme="b" data-role="header" data-position="fixed" data-add-back-btn="true">
+  <h1>Watch-Cat</h1>
+  <a href="#" data-role="button" data-rel="back" data-icon="arrow-l" data-iconpos="notext"></a>
+</div>
+<div data-role="content">
+  <ul data-role="listview" data-divider-theme="b" data-inset="true">
+    <li data-role="list-divider" role="heading">{{ name }}</li>
+    {% if logging %}{% for entry in logging %}
+    <li data-theme="c">
+      <h2>{{ entry.name }}</h2>
+      <p class="ui-li-aside"><strong>{{ entry.event_time|formatDateTime }}</strong></p>
+      <p>{{ entry.detail }}<p>
+    </li>
+    {% endfor %}{% endif %}
+  </ul>
+</div>
+</body>
+</html>

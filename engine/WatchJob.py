@@ -9,6 +9,7 @@ from google.appengine.ext import db
 # import all possible actions so .performAction() in check() works
 from PushOverAction import PushOverAction
 from EmailAction import EmailAction
+from LogEntry import LogEntry
 
 class WatchJob(db.Model):
   name       = db.StringProperty(required=True)
@@ -51,6 +52,9 @@ class WatchJob(db.Model):
   def check(self):
     # check if job is overdue
     if self.last_seen + timedelta(minutes=self.interval) < datetime.utcnow():
+
+      LogEntry.log_event(self.key() ,'Error', 'job is overdue')
+
       # perform all actions
       for action_key in self.actions:
         db.get(action_key).performAction()
