@@ -23,7 +23,7 @@
 <div data-role="content">
   {% for entry in jobs %}
   <ul data-role="listview" data-divider-theme="b" data-inset="true">
-    <li data-role="list-divider" class="{% if entry.enabled %}enabled-job{% else %}disabled-job{% endif %}" role="heading">{{ entry.name }}</li>
+    <li data-role="list-divider" class="{{ entry.status }}-job" role="heading">{{ entry.name }}</li>
     <li data-theme="c">{{ entry.last_seen|formatDateTime }}<span class="ui-li-count">Last seen</span></li>
     <li data-theme="c">{{ entry.last_ip }}<span class="ui-li-count">IP</span></li>
     <li data-theme="c"><a href="m/log/{{ entry.name }}" data-transition="slide">Log</a></li>

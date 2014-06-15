@@ -61,7 +61,8 @@ class CreateJob(webapp2.RequestHandler):
       action2 = EmailAction(enabled=True, address = '***REMOVED***', subject='watch-cat: ', message='test')
       action2.put()
 
-      new_job.actions = [action1.key(), action2.key()]
+      new_job.timeout_actions = [action1.key(), action2.key()]
+      new_job.backonline_actions = [action3.key()]
       new_job.generateSecret()
       new_job.put()
 
