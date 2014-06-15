@@ -12,5 +12,5 @@ Thumbs.db
 *.pyc
 *.pyo
 
-# ignore config-file
-config.ini
+# testing code
+testing/
