@@ -1,0 +1,13 @@
+[Unit]
+Description=Watchcat alive signal
+
+[Service]
+Nice=19
+IOSchedulingClass=2
+IOSchedulingPriority=7
+ExecStart=/opt/watch-cat --url="https://watch-cat.appspot.com/job" --key="KEY" --repeat=5m
+User=nobody
+Group=nobody
+
+[Install]
+WantedBy=multi-user.target
