@@ -26,7 +26,8 @@
     <li data-role="list-divider" class="{{ entry.status }}-job" role="heading">{{ entry.name }}</li>
     <li data-theme="c">{{ entry.last_seen|formatDateTime }}<span class="ui-li-count">Last seen</span></li>
     <li data-theme="c">{{ entry.last_ip }}<span class="ui-li-count">IP</span></li>
-    <li data-theme="c"><a href="m/log/{{ entry.name }}" data-transition="slide">Log</a></li>
+    <li data-theme="c">{{ entry.uptime|formatTimespan }}<span class="ui-li-count">Uptime</span></li>
+    <li data-theme="c"><a href="log/{{ entry.name }}" data-transition="slide">Log</a></li>
   </ul>
   {% endfor %}
 </div>

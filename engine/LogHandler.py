@@ -28,4 +28,4 @@ class LogHandler(webapp2.RequestHandler):
 
 jinja_environment.filters['formatDateTime'] = LogHandler.formatDateTime
 
-app = webapp2.WSGIApplication([('/m/log/(\w+)', LogHandler)], debug=False)
+app = webapp2.WSGIApplication([('/log/(\w+)', LogHandler)], debug=False)

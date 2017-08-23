@@ -1,5 +1,3 @@
-application: watch-cat
-version: testing
 runtime: python27
 api_version: 1
 threadsafe: yes
@@ -24,7 +22,7 @@ handlers:
   script: TaskQueue.app
   login: admin # secure cronjobs (no access for normal user)
 
-- url: /m/log/(\w+)
+- url: /log/(\w+)
   script: LogHandler.app
   login: admin # secure
 

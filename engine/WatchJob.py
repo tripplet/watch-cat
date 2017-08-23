@@ -22,23 +22,28 @@ class WatchJob(db.Model):
   last_fail          = db.DateTimeProperty()
   last_seen          = db.DateTimeProperty()
   last_ip            = db.StringProperty()
+  uptime             = db.IntegerProperty()
   timeout_actions    = db.ListProperty(db.Key)
   backonline_actions = db.ListProperty(db.Key)
   poll               = db.ReferenceProperty()
   task_name          = db.StringProperty()
 
-
   def generateSecret(self):
     self.secret = hashlib.sha1(os.urandom(1024)).hexdigest()
 
-
-  def update(self, remote_ip):
+  def update(self, remote_ip, uptime):
     self.last_seen = datetime.utcnow()
 
     if self.last_ip != remote_ip:
       LogEntry.log_event(self.key(), 'Info', 'IP changed - new IP: '+ remote_ip)
 
     self.last_ip = remote_ip
+
+    if uptime is not None:
+      if self.update is not None and self.uptime > uptime:
+        LogEntry.log_event(self.key(), 'Info', 'Reboot - Previous uptime: ' + str(timedelta(seconds=self.uptime)))
+
+    self.uptime = uptime
     self.put()
 
     # job got back online

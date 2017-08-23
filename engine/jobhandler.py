@@ -12,6 +12,11 @@ class JobHandler(webapp2.RequestHandler):
     except:
       self.abort(400)
 
+    try:
+      uptime = int(self.request.get('uptime'))
+    except:
+      uptime = None
+
     if BlockedIP.isRemoteBlocked(self.request.remote_addr):
       self.abort(400)
 
@@ -22,7 +27,7 @@ class JobHandler(webapp2.RequestHandler):
       BlockedIP.updateBlocked(self.request.remote_addr)
       self.abort(400)
 
-    job.update(self.request.remote_addr)
+    job.update(self.request.remote_addr, uptime)
 
 
 # Main handler ######################################################################
