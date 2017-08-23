@@ -12,5 +12,5 @@ Thumbs.db
 *.pyc
 *.pyo
 
-# testing code
-testing/
+# binaries
+service/watch-cat*
