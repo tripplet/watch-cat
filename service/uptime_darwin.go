@@ -8,7 +8,9 @@ import (
 	"unsafe"
 )
 
-func GetUptime() int{
+// GetUptime returns the system uptime
+// See: https://github.com/cloudfoundry/gosigar (Apache 2 license)
+func GetUptime() int {
 	tv := syscall.Timeval32{}
 
 	if err := sysctlbyname("kern.boottime", &tv); err != nil {

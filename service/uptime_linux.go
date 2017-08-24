@@ -4,6 +4,8 @@ import (
 	"syscall"
 )
 
+// GetUptime returns the system uptime
+// See: https://github.com/cloudfoundry/gosigar (Apache 2 license)
 func GetUptime() int {
 	sysinfo := syscall.Sysinfo_t{}
 
