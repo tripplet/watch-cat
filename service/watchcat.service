@@ -5,7 +5,8 @@ Description=Watchcat alive signal
 Nice=19
 IOSchedulingClass=2
 IOSchedulingPriority=7
-ExecStart=/opt/watch-cat --url="https://watch-cat.appspot.com/job" --key="KEY" --repeat=5m
+EnvironmentFile=/etc/conf.d/watchcat
+ExecStart=/opt/watchcat
 User=nobody
 Group=nobody
 
