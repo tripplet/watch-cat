@@ -50,6 +50,5 @@ func main() {
 }
 
 func sendRequest(url string, key string) {
-	fmt.Printf("%s?key=%s&uptime=%d\n", url, key, GetUptime())
 	http.Get(fmt.Sprintf("%s?key=%s&uptime=%d", url, key, GetUptime()))
 }
