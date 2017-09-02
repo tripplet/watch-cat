@@ -25,6 +25,7 @@ class WatchJob(db.Model):
   uptime             = db.IntegerProperty()
   timeout_actions    = db.ListProperty(db.Key)
   backonline_actions = db.ListProperty(db.Key)
+  reboot_actions     = db.ListProperty(db.Key)
   poll               = db.ReferenceProperty()
   task_name          = db.StringProperty()
 
@@ -42,6 +43,8 @@ class WatchJob(db.Model):
     if uptime is not None:
       if self.update is not None and self.uptime > uptime:
         LogEntry.log_event(self.key(), 'Info', 'Reboot - Previous uptime: ' + str(timedelta(seconds=self.uptime)))
+        for action_key in self.reboot_actions:
+          db.get(action_key).performAction()
 
     self.uptime = uptime
     self.put()
