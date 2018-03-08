@@ -1,10 +1,11 @@
 import logging
 
+from google.appengine.api import app_identity
 from google.appengine.api import mail
 from google.appengine.ext import db
 from datamodels import Action
 
-appengine_mailadress = ''
+appengine_mailadress = 'warning@' + app_identity.get_application_id() + '.appspotmail.com'
 
 class EmailAction(Action):
   address = db.EmailProperty(required=True)
