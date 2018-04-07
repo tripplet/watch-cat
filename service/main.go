@@ -5,50 +5,91 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"time"
 )
 
-var param = map[string]*string{
-	"repeat": nil,
-	"url":    nil,
-	"key":    nil,
+type params struct {
+	repeat   string
+	url      string
+	key      string
+	nouptime bool
+	verbose  bool
 }
 
+var param params
+
 func main() {
-	param["repeat"] = flag.String("repeat", "0", "Repeat request after interval")
-	param["url"] = flag.String("url", "", "Url where to send requests")
-	param["key"] = flag.String("key", "", "Secret key to use")
+	flag.StringVar(&param.repeat, "repeat", "0", "Repeat request after interval, valid units are 'ms', 's', 'm', 'h' e.g. 2m30s")
+	flag.StringVar(&param.url, "url", "", "Url where to send requests")
+	flag.StringVar(&param.key, "key", "", "Secret key to use")
+	flag.BoolVar(&param.nouptime, "nouptime", false, "Do not send uptime in heartbeat requests")
+	flag.BoolVar(&param.verbose, "verbose", false, "Verbose mode")
 	flag.Parse()
 
-	// Environment variables can override cmdline parameter
-	for p := range param {
-		if os.Getenv(strings.ToUpper(p)) != "" {
-			*param[p] = os.Getenv(strings.ToUpper(p))
+	// Try to 	use environment variables if parameter is not set via cmdline
+	log("Parameter:")
+	cmd := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) { cmd[f.Name] = true })
+
+	paramStruct := reflect.TypeOf(param)
+	for idx := 0; idx < paramStruct.NumField(); idx++ {
+		name := paramStruct.Field(idx).Name
+		env := os.Getenv(strings.ToUpper(name))
+		_, isCmdLineParameter := cmd[name]
+
+		if env != "" && !isCmdLineParameter {
+			flag.Set(name, env)
 		}
+
+		log(name, "=", reflect.ValueOf(param).Field(idx))
 	}
 
-	delay, err := time.ParseDuration(*param["repeat"])
+	delay, err := time.ParseDuration(param.repeat)
 	if err != nil {
 		panic(err)
 	}
 
-	// Imidiadly send first request
-	sendRequest(*param["url"], *param["key"])
+	// Immediately send first heartbeat
+	sendRequest()
 
 	// Do not repeat
-	if delay == 0 {
+	if delay <= 0 {
 		return
 	}
 
-	// Repeat request forever
+	// Repeat heartbeat forever
 	for _ = range time.Tick(delay) {
-		sendRequest(*param["url"], *param["key"])
+		sendRequest()
 		runtime.GC()
 	}
 }
 
-func sendRequest(url string, key string) {
-	http.Get(fmt.Sprintf("%s?key=%s&uptime=%d", url, key, GetUptime()))
+func sendRequest() {
+	var url string
+
+	if param.nouptime {
+		url = fmt.Sprintf("%s?key=%s", param.url, param.key)
+	} else {
+		url = fmt.Sprintf("%s?key=%s&uptime=%d", param.url, param.key, GetUptime())
+	}
+
+	log()
+	log("Sending:", url)
+	resp, err := http.Get(url)
+
+	if err != nil {
+		log(">>", err)
+	} else {
+		log(">>", resp.Status)
+		defer resp.Body.Close()
+	}
+}
+
+func log(l ...interface{}) {
+	if param.verbose {
+		fmt.Println(l...)
+	}
 }
