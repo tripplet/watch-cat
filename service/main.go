@@ -17,14 +17,17 @@ type params struct {
 	key      string
 	nouptime bool
 	verbose  bool
+	timeout  int
 }
 
 var param params
+var client *http.Client
 
 func main() {
 	flag.StringVar(&param.repeat, "repeat", "0", "Repeat request after interval, valid units are 'ms', 's', 'm', 'h' e.g. 2m30s")
 	flag.StringVar(&param.url, "url", "", "Url where to send requests")
 	flag.StringVar(&param.key, "key", "", "Secret key to use")
+	flag.IntVar(&param.timeout, "timeout", 60, "Timeout for http request in seconds")
 	flag.BoolVar(&param.nouptime, "nouptime", false, "Do not send uptime in heartbeat requests")
 	flag.BoolVar(&param.verbose, "verbose", false, "Verbose mode")
 	flag.Parse()
@@ -47,6 +50,10 @@ func main() {
 		log(name, "=", reflect.ValueOf(param).Field(idx))
 	}
 
+	client = &http.Client{
+		Timeout: time.Second * time.Duration(param.timeout),
+	}
+
 	delay, err := time.ParseDuration(param.repeat)
 	if err != nil {
 		panic(err)
@@ -62,7 +69,7 @@ func main() {
 
 	// Repeat heartbeat forever
 	for _ = range time.Tick(delay) {
-		sendRequest()
+		go sendRequest()
 		runtime.GC()
 	}
 }
@@ -78,7 +85,7 @@ func sendRequest() {
 
 	log()
 	log("Sending:", url)
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 
 	if err != nil {
 		log(">>", err)
