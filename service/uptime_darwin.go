@@ -8,6 +8,12 @@ import (
 	"unsafe"
 )
 
+// SystemSpecificPrepare for system specific preparations
+func OSSpecificPrepare() {}
+
+// SystemSpecific to perform system specific actions after paramter parsing has been done
+func OSSpecific() {}
+
 // GetUptime returns the system uptime
 // See: https://github.com/cloudfoundry/gosigar (Apache 2 license)
 func GetUptime() int {

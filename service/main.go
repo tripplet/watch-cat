@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"runtime"
@@ -17,27 +20,32 @@ type params struct {
 	key      string
 	nouptime bool
 	verbose  bool
+	checkdns int
 	timeout  int
 }
 
-var param params
+var config params
 var client *http.Client
 
 func main() {
-	flag.StringVar(&param.repeat, "repeat", "0", "Repeat request after interval, valid units are 'ms', 's', 'm', 'h' e.g. 2m30s")
-	flag.StringVar(&param.url, "url", "", "Url where to send requests")
-	flag.StringVar(&param.key, "key", "", "Secret key to use")
-	flag.IntVar(&param.timeout, "timeout", 60, "Timeout for http request in seconds")
-	flag.BoolVar(&param.nouptime, "nouptime", false, "Do not send uptime in heartbeat requests")
-	flag.BoolVar(&param.verbose, "verbose", false, "Verbose mode")
+	// OS specific preparations
+	OSSpecificPrepare()
+
+	flag.StringVar(&config.repeat, "repeat", "0", "Repeat request after interval, valid units are 'ms', 's', 'm', 'h' e.g. 2m30s")
+	flag.StringVar(&config.url, "url", "", "Url where to send requests")
+	flag.StringVar(&config.key, "key", "", "Secret key to use")
+	flag.IntVar(&config.timeout, "timeout", 60, "Timeout for http request in seconds")
+	flag.IntVar(&config.checkdns, "checkdns", 0, "Check dns every x seconds before first request, for faster inital signal in case of long allowed timeout")
+	flag.BoolVar(&config.nouptime, "nouptime", false, "Do not send uptime in heartbeat requests")
+	flag.BoolVar(&config.verbose, "verbose", false, "Verbose mode")
 	flag.Parse()
 
-	// Try to 	use environment variables if parameter is not set via cmdline
+	// Try to use environment variables if parameter is not set via cmdline
 	log("Parameter:")
 	cmd := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) { cmd[f.Name] = true })
 
-	paramStruct := reflect.TypeOf(param)
+	paramStruct := reflect.TypeOf(config)
 	for idx := 0; idx < paramStruct.NumField(); idx++ {
 		name := paramStruct.Field(idx).Name
 		env := os.Getenv(strings.ToUpper(name))
@@ -47,16 +55,46 @@ func main() {
 			flag.Set(name, env)
 		}
 
-		log(name, "=", reflect.ValueOf(param).Field(idx))
+		log(name, "=", reflect.ValueOf(config).Field(idx))
 	}
+
+	// Perform OS specific actions after paramter parsing has been done
+	OSSpecific()
 
 	client = &http.Client{
-		Timeout: time.Second * time.Duration(param.timeout),
+		Timeout: time.Second * time.Duration(config.timeout),
 	}
 
-	delay, err := time.ParseDuration(param.repeat)
+	delay, err := time.ParseDuration(config.repeat)
 	if err != nil {
 		panic(err)
+	}
+
+	if config.checkdns > 0 {
+		log("Checking for DNS...")
+		url, err := url.Parse(config.url)
+		if err != nil {
+			panic(err)
+		}
+
+		host := url.Hostname()
+		resolve := &net.Resolver{}
+
+		log("Trying to resolve: " + host)
+		idx := 0
+		for {
+			log("Try:", idx)
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.checkdns)*time.Second)
+			defer cancel()
+			_, err := resolve.LookupHost(ctx, host)
+
+			if err == nil {
+				log("DNS available")
+				break
+			}
+			idx++
+		}
 	}
 
 	// Immediately send first heartbeat
@@ -77,10 +115,10 @@ func main() {
 func sendRequest() {
 	var url string
 
-	if param.nouptime {
-		url = fmt.Sprintf("%s?key=%s", param.url, param.key)
+	if config.nouptime {
+		url = fmt.Sprintf("%s?key=%s", config.url, config.key)
 	} else {
-		url = fmt.Sprintf("%s?key=%s&uptime=%d", param.url, param.key, GetUptime())
+		url = fmt.Sprintf("%s?key=%s&uptime=%d", config.url, config.key, GetUptime())
 	}
 
 	log()
@@ -96,7 +134,7 @@ func sendRequest() {
 }
 
 func log(l ...interface{}) {
-	if param.verbose {
+	if config.verbose {
 		fmt.Println(l...)
 	}
 }
