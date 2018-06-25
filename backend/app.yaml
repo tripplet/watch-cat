@@ -4,12 +4,9 @@ threadsafe: yes
 
 
 handlers:
-- url: /jquery/
-  static_dir: jquery/
-
-- url: /(.*\.(html|ico|png|jpg|gif|txt))
+- url: /(.*\.(html|ico|png|jpg|gif|txt|js|css))
   static_files: static/\1
-  upload: static/(.*\.(html|ico|png|jpg|gif|txt))
+  upload: static/(.*\.(html|ico|png|jpg|gif|txt|js|css))
 
 - url: /job
   script: jobhandler.app

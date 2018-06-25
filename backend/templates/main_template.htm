@@ -1,0 +1,30 @@
+<html>
+<head>
+  <meta content="yes" name="apple-mobile-web-app-capable"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1 minimum-scale=1.0, maximum-scale=0.6667, user-scalable=no">
+  <link rel="apple-touch-icon" href="favicon.png"/>
+  <link rel="stylesheet" href="/css/bootstrap.min.css"/>
+  <script src="/js/bootstrap.min.js"></script>
+  <script src="/js/jquery-3.3.1.slim.min.js"></script>
+  <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-light navbar-expand-sm bg-light">
+  <a class="navbar-brand mb-0 h1" href="#">
+    <img src="/favicon.png" width="30" height="30" class="d-inline-block align-top" alt="">
+    WatchCat
+  </a>
+</nav>
+<div class="content">
+  {% for entry in jobs %}
+  <ul id="{{ entry.name }}" class="list-group">
+    <li class="list-group-item d-flex justify-content-between align-items-center {{ entry.status }}-job"><h3><a href="log/{{ entry.name }}">{{ entry.name }}</a></h3></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">{{ entry.last_seen|format_datetime }}<span class="badge badge-secondary badge-pill">&nbsp;Last seen&nbsp;</span></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">{{ entry.last_ip|add_breakchars}}<span class="badge badge-secondary badge-pill">&nbsp;IP&nbsp;</span></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">{{ entry.uptime|format_timespan }}<span class="badge badge-secondary badge-pill">&nbsp;Uptime&nbsp;</span></li>
+  </ul>
+  {% endfor %}
+</div>
+</body>
+</html>
