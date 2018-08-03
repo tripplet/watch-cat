@@ -57,17 +57,20 @@ class WatchJob(db.Model):
 
             # perform all back_online actions
             for action_key in self.backonline_actions:
-                db.get(action_key).perform_action()
+                try:
+                    db.get(action_key).perform_action()
+                except Exception as exp:
+                    logging.error('Error executing backonline action: ' + str(exp))
 
         # delete previous (waiting) task
         if self.task_name is not None:
-            logging.info('old task: ' + self.task_name)
+            logging.debug('old task: ' + self.task_name)
             Queue.delete_tasks(Queue(), Task(name=self.task_name))
 
         task_name = self.name + '_' + datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S-%f')
 
         # create task to be executed in updated no called in interval minutes
-        taskqueue.add(name=task_name, url='/task', params={'key': self.key()}, countdown=(self.interval + 1) * 60)
+        taskqueue.add(name=task_name, url='/task', params={'key': self.key()}, countdown=(self.interval + 2) * 60)
 
         self.task_name = task_name
         self.put()
@@ -81,8 +84,10 @@ class WatchJob(db.Model):
 
             # perform all actions
             for action_key in self.timeout_actions:
-                db.get(action_key).perform_action()
-
+                try:
+                    db.get(action_key).perform_action()
+                except Exception as exp:
+                    logging.error('Error executing timeout action: ' + str(exp))
             self.put()
 
     @staticmethod

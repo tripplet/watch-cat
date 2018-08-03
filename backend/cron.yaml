@@ -1,8 +1,12 @@
 cron:
-- description: cleanup database
-  url: /cron/cleanup
+- description: cleanup blocked ips
+  url: /cron/unblock
   schedule: every 2 hours
 
-#- description: check all jobs for overdue an perform actions
-#  url: /cron/checkjobs
-#  schedule: every 1 hours
+- description: check jobs every 6 hours (as backuk incase tasks fail)
+  url: /cron/checkjobs
+  schedule: every 2 hours
+
+- description: cleanup logs
+  url: /cron/log_cleanup
+  schedule: every sunday 03:00

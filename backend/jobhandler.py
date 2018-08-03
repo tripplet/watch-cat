@@ -8,6 +8,10 @@ from WatchJob import WatchJob
 
 class JobHandler(webapp2.RequestHandler):
     def get(self):
+        if BlockedIP.is_remote_blocked(self.request.remote_addr):
+            self.abort(400)
+            return
+
         try:
             key = self.request.get('key')
         except:
@@ -18,10 +22,6 @@ class JobHandler(webapp2.RequestHandler):
             uptime = int(self.request.get('uptime'))
         except:
             uptime = None
-
-        if BlockedIP.is_remote_blocked(self.request.remote_addr):
-            self.abort(400)
-            return
 
         job = WatchJob.all().filter('secret =', key).get()
 

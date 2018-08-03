@@ -19,10 +19,10 @@
 <div class="content">
   {% for entry in jobs %}
   <ul id="{{ entry.name }}" class="list-group">
-    <li class="list-group-item d-flex justify-content-between align-items-center {{ entry.status }}-job"><h3><a href="log/{{ entry.name }}">{{ entry.name }}</a></h3></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center {{ entry.status }}-job"><h3><a href="log/{{ entry.name }}">{{ entry.name }}{% if not entry.enabled %}&nbsp;(Disabled){% endif %}</a></h3></li>
     <li class="list-group-item d-flex justify-content-between align-items-center">{{ entry.last_seen|format_datetime }}<span class="badge badge-secondary badge-pill">&nbsp;Last seen&nbsp;</span></li>
     <li class="list-group-item d-flex justify-content-between align-items-center">{{ entry.last_ip|add_breakchars}}<span class="badge badge-secondary badge-pill">&nbsp;IP&nbsp;</span></li>
-    <li class="list-group-item d-flex justify-content-between align-items-center">{{ entry.uptime|format_timespan }}<span class="badge badge-secondary badge-pill">&nbsp;Uptime&nbsp;</span></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">{% if entry.status == 'offline' %}Was&nbsp;{% endif %}{{ entry.uptime|format_timespan }}<span class="badge badge-secondary badge-pill">&nbsp;Uptime&nbsp;</span></li>
   </ul>
   {% endfor %}
 </div>

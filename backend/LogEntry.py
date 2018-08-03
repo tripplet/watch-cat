@@ -11,3 +11,9 @@ class LogEntry(db.Model):
     def log_event(job, name, detail):
         entry = LogEntry(job=job, name=name, detail=detail)
         entry.put()
+
+    @staticmethod
+    def cleanup():
+        pass
+        # for p in BlockedIP.all().filter('blocked_until < ', datetime.utcnow()):
+        #     p.delete()
