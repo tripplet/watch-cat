@@ -1,6 +1,7 @@
 import webapp2
 from BlockedIP import BlockedIP
 from WatchJob import WatchJob
+from LogEntry import LogEntry
 
 
 # Cronjob handler

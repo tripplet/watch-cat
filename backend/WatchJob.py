@@ -9,6 +9,8 @@ from google.appengine.ext import db
 
 # import all possible actions so .performAction() in check() works
 from LogEntry import LogEntry
+from PushOverAction import PushOverAction # DO NOT REMOVE
+from EmailAction import EmailAction # DO NOT REMOVE
 
 
 class WatchJob(db.Model):
@@ -45,7 +47,10 @@ class WatchJob(db.Model):
                 LogEntry.log_event(self.key(), 'Reboot',
                                    'Reboot - Previous uptime: ' + str(timedelta(seconds=self.uptime)))
                 for action_key in self.reboot_actions:
-                    db.get(action_key).perform_action()
+                    try:
+                        db.get(action_key).perform_action()
+                    except Exception as exp:
+                        logging.error('Error executing reboot action: ' + str(exp))
 
         self.uptime = uptime
         self.put()
