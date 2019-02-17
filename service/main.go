@@ -50,7 +50,7 @@ func main() {
 
 	// Do not repeat
 	if delay <= 0 {
-		return
+		os.Exit(0)
 	}
 
 	// Make the force garbage collection very aggressive
@@ -140,7 +140,7 @@ func parseParameter() {
 	log()
 
 	if config.url == "" {
-		fmt.Println("No url provide use \"-help\" to see all supported cmd arguments")
+		fmt.Println("No url provided use \"-help\" to see all supported command line arguments")
 		os.Exit(-1)
 	}
 }
