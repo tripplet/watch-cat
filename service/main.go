@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -25,12 +26,86 @@ type params struct {
 }
 
 var config params
-var client *http.Client
 
 func main() {
 	// OS specific preparations
 	OSSpecificPrepare()
 
+	parseParameter()
+
+	// Perform OS specific actions after paramter parsing has been done
+	OSSpecific()
+
+	delay, err := time.ParseDuration(config.repeat)
+	if err != nil {
+		panic(err)
+	}
+
+	if config.checkdns > 0 {
+		checkDns()
+	}
+
+	// Immediately send first heartbeat
+	sendRequest()
+
+	// Do not repeat
+	if delay <= 0 {
+		return
+	}
+
+	// Make the force garbage collection very aggressive
+	debug.SetGCPercent(1)
+
+	// Repeat heartbeat forever
+	for _ = range time.Tick(delay) {
+		go sendRequest()
+		runtime.GC()
+	}
+}
+
+func sendRequest() {
+	url := config.url
+
+	if !config.nouptime || config.key != "" {
+		url = url + "?"
+	}
+
+	if config.key != "" {
+		url = url + fmt.Sprintf("key=%s", config.key)
+	}
+
+	if !config.nouptime {
+		if config.key != "" {
+			url = url + "&"
+		}
+
+		url = url + fmt.Sprintf("uptime=%d", GetUptime())
+	}
+
+	log()
+	log("- Sending:", url)
+
+	client := &http.Client{
+		Timeout: time.Second * time.Duration(config.timeout),
+	}
+
+	resp, err := client.Get(url)
+
+	if err != nil {
+		log("  >>", err)
+	} else {
+		log("  >>", resp.Status)
+		defer resp.Body.Close()
+	}
+}
+
+func log(l ...interface{}) {
+	if config.verbose {
+		fmt.Println(l...)
+	}
+}
+
+func parseParameter() {
 	flag.StringVar(&config.repeat, "repeat", "0", "Repeat request after interval, valid units are 'ms', 's', 'm', 'h' e.g. 2m30s")
 	flag.StringVar(&config.url, "url", "", "Url where to send requests")
 	flag.StringVar(&config.key, "key", "", "Secret key to use")
@@ -41,7 +116,7 @@ func main() {
 	flag.Parse()
 
 	// Try to use environment variables if parameter is not set via cmdline
-	log("Parameter:")
+	log("- Parameter:")
 	cmd := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) { cmd[f.Name] = true })
 
@@ -55,86 +130,42 @@ func main() {
 			flag.Set(name, env)
 		}
 
-		log(name, "=", reflect.ValueOf(config).Field(idx))
+		log(" ", name, "=", reflect.ValueOf(config).Field(idx))
 	}
 
-	// Perform OS specific actions after paramter parsing has been done
-	OSSpecific()
+	log()
 
-	client = &http.Client{
-		Timeout: time.Second * time.Duration(config.timeout),
+	if config.url == "" {
+		fmt.Println("No url provide use \"-help\" to see all supported cmd arguments")
+		os.Exit(-1)
 	}
+}
 
-	delay, err := time.ParseDuration(config.repeat)
+func checkDns() {
+	log("- Checking for DNS...")
+	url, err := url.Parse(config.url)
 	if err != nil {
 		panic(err)
 	}
 
-	if config.checkdns > 0 {
-		log("Checking for DNS...")
-		url, err := url.Parse(config.url)
-		if err != nil {
-			panic(err)
+	host := url.Hostname()
+	resolve := &net.Resolver{}
+
+	log("  Trying to resolve: " + host)
+	idx := 0
+	for {
+		log("  Try:", idx)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.checkdns)*time.Second)
+		defer cancel()
+		_, err := resolve.LookupHost(ctx, host)
+
+		if err == nil {
+			log("  DNS available")
+			break
 		}
 
-		host := url.Hostname()
-		resolve := &net.Resolver{}
-
-		log("Trying to resolve: " + host)
-		idx := 0
-		for {
-			log("Try:", idx)
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.checkdns)*time.Second)
-			defer cancel()
-			_, err := resolve.LookupHost(ctx, host)
-
-			if err == nil {
-				log("DNS available")
-				break
-			}
-			idx++
-		}
-	}
-
-	// Immediately send first heartbeat
-	sendRequest()
-
-	// Do not repeat
-	if delay <= 0 {
-		return
-	}
-
-	// Repeat heartbeat forever
-	for _ = range time.Tick(delay) {
-		go sendRequest()
-		runtime.GC()
-	}
-}
-
-func sendRequest() {
-	var url string
-
-	if config.nouptime {
-		url = fmt.Sprintf("%s?key=%s", config.url, config.key)
-	} else {
-		url = fmt.Sprintf("%s?key=%s&uptime=%d", config.url, config.key, GetUptime())
-	}
-
-	log()
-	log("Sending:", url)
-	resp, err := client.Get(url)
-
-	if err != nil {
-		log(">>", err)
-	} else {
-		log(">>", resp.Status)
-		defer resp.Body.Close()
-	}
-}
-
-func log(l ...interface{}) {
-	if config.verbose {
-		fmt.Println(l...)
+		idx++
+		log()
 	}
 }
