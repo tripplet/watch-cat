@@ -10,16 +10,13 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
-var installService = false
-
 var (
 	kernel32Dll        = syscall.MustLoadDLL("kernel32")
 	procGetTickCount64 = kernel32Dll.MustFindProc("GetTickCount64").Addr()
-	*installService  = false
+	installService     = false
 )
 
 // GetUptime returns the system uptime
-// See: https://github.com/cloudfoundry/gosigar (Apache 2 license)
 func GetUptime() int {
 	count, _, err := syscall.Syscall(procGetTickCount64, 0, 0, 0, 0)
 	if err != 0 {
@@ -49,7 +46,7 @@ func OSSpecific() {
 	}
 }
 
-func InstallService(serviceName string, args string[]) error {
+func InstallService(serviceName string, args []string) error {
 	exe, err := os.Executable()
 	if err != nil {
 		panic(err)
@@ -72,9 +69,9 @@ func InstallService(serviceName string, args string[]) error {
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	defer service.Close()
 
-	err = s.Start("is", "manual-started")
+	err = service.Start("is", "manual-started")
 	if err != nil {
 		return fmt.Errorf("could not start service: %v", err)
 	}
