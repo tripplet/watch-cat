@@ -58,8 +58,7 @@ func main() {
 
 	// Repeat heartbeat forever
 	for _ = range time.Tick(delay) {
-		go sendRequest()
-		runtime.GC()
+		go sendRequestAndCleanup()
 	}
 }
 
@@ -97,6 +96,11 @@ func sendRequest() {
 		log("  >>", resp.Status)
 		defer resp.Body.Close()
 	}
+}
+
+func sendRequestAndCleanup() {
+	sendRequest()
+	runtime.GC()
 }
 
 func log(l ...interface{}) {
