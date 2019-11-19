@@ -15,7 +15,7 @@ from EmailAction import EmailAction # DO NOT REMOVE
 
 class WatchJob(db.Model):
     name = db.StringProperty(required=True)
-    watch_type = db.StringProperty(required=True, default='push', choices={'push', 'poll'})
+    watch_type = db.StringProperty(required=True, default='push', choices={'push', 'pull'})
     enabled = db.BooleanProperty(required=True, default=False)
     interval = db.IntegerProperty(required=True)
     created = db.DateTimeProperty(required=True, auto_now_add=True)
@@ -24,11 +24,13 @@ class WatchJob(db.Model):
     last_fail = db.DateTimeProperty()
     last_seen = db.DateTimeProperty()
     last_ip = db.StringProperty()
+    last_ipv4 = db.StringProperty()
+    last_ipv6 = db.StringProperty()
     uptime = db.IntegerProperty()
     timeout_actions = db.ListProperty(db.Key)
     backonline_actions = db.ListProperty(db.Key)
     reboot_actions = db.ListProperty(db.Key)
-    poll = db.ReferenceProperty()
+    pull_action = db.ReferenceProperty()
     task_name = db.StringProperty()
 
     def generate_secret(self):
@@ -37,10 +39,15 @@ class WatchJob(db.Model):
     def update(self, remote_ip, uptime):
         self.last_seen = datetime.utcnow()
 
-        if self.last_ip != remote_ip:
+        if remote_ip != self.last_ip and remote_ip != self.last_ipv4 and remote_ip != self.last_ipv6:
             LogEntry.log_event(self.key(), 'Info', 'IP changed - new IP: ' + remote_ip)
 
         self.last_ip = remote_ip
+
+        if ':' in remote_ip:
+            self.last_ipv6 = remote_ip
+        else:
+            self.last_ipv4 = remote_ip
 
         if uptime is not None:
             if self.update is not None and self.uptime > uptime:
@@ -81,7 +88,28 @@ class WatchJob(db.Model):
         self.put()
 
     def check(self):
-        # check if job is overdue
+        if self.watch_type == 'push':
+            self.check_push()
+        elif self.watch_type == 'pull':
+            self.check_pull()
+
+    def check_pull(self):
+        """check the desired service"""
+        for action_key in self.timeout_actions:
+            try:
+                available = db.get(self.pull_action).perform_action()
+                if not available and self.status != 'offline':
+                    self.status = 'offline'
+                    LogEntry.log_event(self.key(), 'Error', 'Service not available')
+                    self.put()
+                elif available and self.status != 'online':
+                    self.status = 'online'
+                    self.put()
+            except Exception as exp:
+                logging.error('Error executing pull action: ' + str(exp))
+
+    def check_push(self):
+        """check if job is overdue"""
         if self.last_seen + timedelta(minutes=self.interval) < datetime.utcnow():
 
             self.status = 'offline'
