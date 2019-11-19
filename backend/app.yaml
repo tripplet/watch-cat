@@ -2,10 +2,17 @@ runtime: python27
 api_version: 1
 threadsafe: yes
 
+# Use automatic scaling to get 28 frontend instance hours
+# https://cloud.google.com/appengine/docs/standard/python/how-instances-are-managed?hl=de#instance_scaling
 automatic_scaling:
-  standard_scheduler_settings:
-    max_instances: 1
+  target_throughput_utilization: 0.95
+  target_cpu_utilization: 0.95
+  max_pending_latency: 5s
+  max_instances: 1
 
+skip_files:
+  - deploy.sh
+  
 handlers:
 - url: /(.*\.(html|ico|png|jpg|gif|txt|js|css))
   static_files: static/\1
