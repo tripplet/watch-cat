@@ -1,3 +1,4 @@
+from datetime import timedelta, datetime
 from google.appengine.ext import db
 
 
@@ -14,6 +15,9 @@ class LogEntry(db.Model):
 
     @staticmethod
     def cleanup():
-        pass
-        # for p in BlockedIP.all().filter('blocked_until < ', datetime.utcnow()):
-        #     p.delete()
+        to_delete = [] 
+        for evt in LogEntry.all(keys_only=True).filter('event_time < ', datetime.utcnow() - timedelta(days=365)):
+            to_delete.append(evt)
+        
+        if len(to_delete) > 0:
+            db.delete(to_delete)
