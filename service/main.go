@@ -42,11 +42,15 @@ func main() {
 	}
 
 	if config.checkdns > 0 {
-		checkDns()
+		checkDNS()
+	}
+
+	client := &http.Client{
+		Timeout: time.Second * time.Duration(config.timeout),
 	}
 
 	// Immediately send first heartbeat
-	sendRequest()
+	sendRequest(client)
 
 	// Do not repeat
 	if delay <= 0 {
@@ -57,12 +61,12 @@ func main() {
 	debug.SetGCPercent(1)
 
 	// Repeat heartbeat forever
-	for _ = range time.Tick(delay) {
-		go sendRequestAndCleanup()
+	for range time.Tick(delay) {
+		go sendRequestAndCleanup(client)
 	}
 }
 
-func sendRequest() {
+func sendRequest(client *http.Client) {
 	url := config.url
 
 	if !config.nouptime || config.key != "" {
@@ -84,22 +88,18 @@ func sendRequest() {
 	log()
 	log("- Sending:", url)
 
-	client := &http.Client{
-		Timeout: time.Second * time.Duration(config.timeout),
-	}
-
 	resp, err := client.Get(url)
 
 	if err != nil {
 		log("  >>", err)
 	} else {
-		log("  >>", resp.Status)
 		defer resp.Body.Close()
+		log("  >>", resp.Status)
 	}
 }
 
-func sendRequestAndCleanup() {
-	sendRequest()
+func sendRequestAndCleanup(client *http.Client) {
+	sendRequest(client)
 	runtime.GC()
 }
 
@@ -145,7 +145,7 @@ func parseParameter() {
 	}
 }
 
-func checkDns() {
+func checkDNS() {
 	log("- Checking for DNS...")
 	url, err := url.Parse(config.url)
 	if err != nil {

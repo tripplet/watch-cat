@@ -8,10 +8,10 @@ import (
 	"unsafe"
 )
 
-// SystemSpecificPrepare for system specific preparations
+// OSSpecificPrepare for system specific preparations
 func OSSpecificPrepare() {}
 
-// SystemSpecific to perform system specific actions after paramter parsing has been done
+// OSSpecific to perform system specific actions after paramter parsing has been done
 func OSSpecific() {}
 
 // GetUptime returns the system uptime
