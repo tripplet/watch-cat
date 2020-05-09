@@ -1,0 +1,53 @@
+.online-job {
+  color: #155724;
+  background-color: #c3e6cb !important;
+}
+
+.offline-job {
+  color: #721c24;
+  background-color: #f1b0b7 !important;
+}
+
+.logging-header {
+  color: #004085;
+    background-color: #9fcdff !important;
+}
+
+.logentry-error {
+  background-color: #f1b0b7 !important;
+}
+
+.logentry-reboot {
+  color: #155724;
+  background-color: #c3e6cb !important;
+}
+
+/* More space for title in header */
+.ui-header .ui-title {
+    margin-right: 10%;
+    margin-left: 10%;
+}
+
+.list-group {
+  padding: 2em 2em 0 2em;
+}
+
+.list-group:last-child {
+  padding: 2em 2em 2em 2em;
+}
+
+.list-group-item {
+  background-color: #f8f9fa;
+}
+
+/* Improved style for desktop */
+.content {
+  max-width: 30em;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.content-log {
+  margin-left: 1%;
+  margin-right: 1%;
+}

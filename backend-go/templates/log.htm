@@ -1,0 +1,38 @@
+<html>
+<head>
+  <meta content="yes" name="apple-mobile-web-app-capable"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1 minimum-scale=1.0, maximum-scale=0.6667, user-scalable=no">
+  <link rel="apple-touch-icon" href="/assetsfavicon.png"/>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css"/>
+  <script src="/assets/js/jquery-3.4.1.slim.min.js"></script>
+  <script src="/assets/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="/assets/css/app.css"/>
+</head>
+<body>
+<nav class="navbar navbar-light navbar-expand-sm bg-light">
+  <a class="navbar-brand mb-0 h1" href="/">
+    <img src="/assets/favicon.png" width="30" height="30" class="d-inline-block align-top" alt="">
+    WatchCat
+  </a>
+</nav>
+<div class="content-log">
+  <ul class="list-group">
+    <li class="list-group-item flex-column align-items-start logging-header">
+      <div class="d-flex w-100 justify-content-between">
+        <p class="mb-1">{{ .Name }}</p>
+      </div>
+    </li>
+
+    {{ range .LogEntries }}
+    <li class="list-group-item flex-column align-items-start logentry-{{ .Name|lower }}">
+      <div class="d-flex w-100 justify-content-between">
+        <p class="mb-1">{{ .Detail|add_breakchars }}</p>
+        <small>{{ .EventTime|format_datetime }}</small>
+      </div>
+    </li>
+    {{ end }}
+  </ul>
+</div>
+</body>
+</html>
