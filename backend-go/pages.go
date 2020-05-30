@@ -12,24 +12,26 @@ import (
 )
 
 func getJobs(ctx context.Context) ([]watchJob, error) {
-	jobs, err := client.Collection("WatchJob").Documents(ctx).GetAll()
-	if err != nil {
-		return nil, err
-	}
+	// jobs, err := client.Collection("WatchJob").Documents(ctx).GetAll()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	var renderJobs []watchJob
+	return nil, nil
 
-	for _, jobDoc := range jobs {
-		var job watchJob
+	// var renderJobs []watchJob
 
-		if err := jobDoc.DataTo(&job); err != nil {
-			return nil, err
-		}
+	// for _, jobDoc := range jobs {
+	// 	var job watchJob
 
-		renderJobs = append(renderJobs, job)
-	}
+	// 	if err := jobDoc.DataTo(&job); err != nil {
+	// 		return nil, err
+	// 	}
 
-	return renderJobs, nil
+	// 	renderJobs = append(renderJobs, job)
+	// }
+
+	// return renderJobs, nil
 }
 
 func handleRootPage(c *gin.Context) {
