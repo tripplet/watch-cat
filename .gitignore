@@ -13,4 +13,4 @@ Thumbs.db
 *.pyo
 
 # binaries
-service/bin/
+service/golang/bin/

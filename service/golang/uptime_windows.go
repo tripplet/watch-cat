@@ -25,12 +25,12 @@ func GetUptime() int {
 	return int((time.Duration(count) * time.Millisecond).Seconds())
 }
 
-// OSSpecificPrepare for system specific preparations
+// SystemSpecificPrepare for system specific preparations
 func OSSpecificPrepare() {
 	flag.BoolVar(&installService, "install", false, "Install the service")
 }
 
-// OSSpecific to perform system specific actions after paramter parsing has been done
+// SystemSpecific to perform system specific actions after paramter parsing has been done
 func OSSpecific() {
 	if installService {
 		var args []string

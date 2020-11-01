@@ -16,13 +16,14 @@ import (
 )
 
 type params struct {
-	repeat   string
-	url      string
-	key      string
-	nouptime bool
-	verbose  bool
-	checkdns int
-	timeout  int
+	repeat     string
+	url        string
+	httpMethod string
+	key        string
+	nouptime   bool
+	verbose    bool
+	checkdns   int
+	timeout    int
 }
 
 var config params
@@ -45,12 +46,8 @@ func main() {
 		checkDNS()
 	}
 
-	client := &http.Client{
-		Timeout: time.Second * time.Duration(config.timeout),
-	}
-
 	// Immediately send first heartbeat
-	sendRequest(client)
+	sendRequest()
 
 	// Do not repeat
 	if delay <= 0 {
@@ -61,45 +58,61 @@ func main() {
 	debug.SetGCPercent(1)
 
 	// Repeat heartbeat forever
-	for range time.Tick(delay) {
-		go sendRequestAndCleanup(client)
+	for _ = range time.Tick(delay) {
+		go sendRequestAndCleanup()
 	}
 }
 
-func sendRequest(client *http.Client) {
-	url := config.url
+func sendRequest() {
+	backendURL := config.url
 
 	if !config.nouptime || config.key != "" {
-		url = url + "?"
+		backendURL = backendURL + "?"
 	}
 
 	if config.key != "" {
-		url = url + fmt.Sprintf("key=%s", config.key)
+		backendURL = backendURL + fmt.Sprintf("key=%s", config.key)
 	}
 
 	if !config.nouptime {
 		if config.key != "" {
-			url = url + "&"
+			backendURL = backendURL + "&"
 		}
 
-		url = url + fmt.Sprintf("uptime=%d", GetUptime())
+		backendURL = backendURL + fmt.Sprintf("uptime=%d", GetUptime())
 	}
 
 	log()
-	log("- Sending:", url)
+	log("- Sending:", backendURL)
 
-	resp, err := client.Get(url)
+	client := &http.Client{
+		Timeout: time.Second * time.Duration(config.timeout),
+	}
+
+	requestURL, err := url.Parse(backendURL)
+	if err != nil {
+		log("  >>", err)
+		return
+	}
+
+	req := http.Request{
+		Method:        config.httpMethod,
+		ContentLength: 0,
+		URL:           requestURL,
+	}
+
+	resp, err := client.Do(&req)
 
 	if err != nil {
 		log("  >>", err)
 	} else {
-		defer resp.Body.Close()
 		log("  >>", resp.Status)
+		defer resp.Body.Close()
 	}
 }
 
-func sendRequestAndCleanup(client *http.Client) {
-	sendRequest(client)
+func sendRequestAndCleanup() {
+	sendRequest()
 	runtime.GC()
 }
 
@@ -114,6 +127,7 @@ func parseParameter() {
 	flag.StringVar(&config.url, "url", "", "Url where to send requests")
 	flag.StringVar(&config.key, "key", "", "Secret key to use")
 	flag.IntVar(&config.timeout, "timeout", 60, "Timeout for http request in seconds")
+	flag.StringVar(&config.httpMethod, "method", "POST", "HTTP Method to use")
 	flag.IntVar(&config.checkdns, "checkdns", 0, "Check dns every x seconds before first request, for faster inital signal in case of long allowed timeout")
 	flag.BoolVar(&config.nouptime, "nouptime", false, "Do not send uptime in heartbeat requests")
 	flag.BoolVar(&config.verbose, "verbose", false, "Verbose mode")
