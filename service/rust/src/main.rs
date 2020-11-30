@@ -6,7 +6,7 @@ use simple_logger::SimpleLogger;
 
 // Network related
 use dns_lookup;
-use http::{header, Method, HeaderMap, HeaderValue};
+use http::{header, HeaderMap, HeaderValue, Method};
 use reqwest::blocking::{Client, Response};
 use url::Url;
 
@@ -94,7 +94,11 @@ fn main() {
         // Send the HTTP request
         match send_request(&client, &cfg) {
             Ok(resp) => {
-                info!("Response {}: \"{}\"", resp.status().as_u16(), resp.text().unwrap_or_default());
+                info!(
+                    "Response {}: \"{}\"",
+                    resp.status().as_u16(),
+                    resp.text().unwrap_or_default()
+                );
             }
             Err(err) => {
                 error!("Error during request: {}", err);
@@ -126,11 +130,13 @@ fn check_dns(interval: u16, domain: &str) {
 
 /// Send a HTTP request
 fn send_request(client: &Client, cfg: &Config) -> Result<Response, Box<dyn Error>> {
-    let mut request_builder = client.request(Method::from_bytes(cfg.method.as_bytes())?, cfg.url.as_str());
+    let mut request_builder =
+        client.request(Method::from_bytes(cfg.method.as_bytes())?, cfg.url.as_str());
 
     // Add current uptime as query parameter
     if !cfg.nouptime {
-        request_builder = request_builder.query(&[("uptime", uptime_lib::get()?.as_secs().to_string())]);
+        request_builder =
+            request_builder.query(&[("uptime", uptime_lib::get()?.as_secs().to_string())]);
     }
 
     let request = request_builder.build()?;
