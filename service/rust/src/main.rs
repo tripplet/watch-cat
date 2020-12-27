@@ -1,4 +1,4 @@
-use std::{error::Error, thread, time::Duration};
+use std::{thread, time::Duration};
 
 // Logging
 use log::{error, info, LevelFilter};
@@ -6,8 +6,7 @@ use simple_logger::SimpleLogger;
 
 // Network related
 use dns_lookup;
-use http::{header, HeaderMap, HeaderValue, Method};
-use reqwest::blocking::{Client, Response};
+use ureq::{Agent, Response};
 use url::Url;
 
 // Other stuff
@@ -65,23 +64,17 @@ fn main() {
 
     info!("{:?}", &cfg);
 
-    // Create HTTP client
-    let mut client_builder = Client::builder();
-    let mut headers = HeaderMap::new();
-
-    // Add timeout if specified
-    if let Some(http_timeout) = cfg.timeout {
-        client_builder = client_builder.timeout(Duration::from_secs(http_timeout.into()));
-    }
+    // Create HTTP agent
+    let mut agent = ureq::agent();
 
     // Add the secret key as authorization header
     if let Some(key) = &cfg.key {
-        headers.insert(header::AUTHORIZATION, HeaderValue::from_str(&key).unwrap());
+        agent.auth_kind("Bearer", key);
     }
 
-    headers.insert(header::CONTENT_LENGTH, HeaderValue::from_static("0"));
-    client_builder = client_builder.default_headers(headers);
-    let client = client_builder.build().unwrap();
+    agent.set("Content-Length", "0");
+    agent.set("User-Agent", format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")).as_str());
+    agent.build();
 
     // Preform DNS pre check loop if configured
     if let Some(check_dns_interval) = cfg.checkdns {
@@ -92,17 +85,15 @@ fn main() {
 
     loop {
         // Send the HTTP request
-        match send_request(&client, &cfg) {
-            Ok(resp) => {
-                info!(
-                    "Response {}: \"{}\"",
-                    resp.status().as_u16(),
-                    resp.text().unwrap_or_default()
-                );
+        let resp = send_request(&agent, &cfg);
+        if resp.ok() {
+            let status = resp.status();
+            match resp.into_string() {
+                Ok(resp_str) => info!("Response {}: \"{}\"", status, resp_str),
+                Err(err) => error!("Error receiving response: {:?}", err),
             }
-            Err(err) => {
-                error!("Error during request: {}", err);
-            }
+        } else {
+            error!("Error during request: {:?}", resp.synthetic_error());
         }
 
         if let Some(repeat_interval) = cfg.repeat {
@@ -129,18 +120,21 @@ fn check_dns(interval: u16, domain: &str) {
 }
 
 /// Send a HTTP request
-fn send_request(client: &Client, cfg: &Config) -> Result<Response, Box<dyn Error>> {
-    let mut request_builder =
-        client.request(Method::from_bytes(cfg.method.as_bytes())?, cfg.url.as_str());
+fn send_request(agent: &Agent, cfg: &Config) -> Response {
+    let mut request = agent.request(cfg.method.as_str(), cfg.url.as_str());
 
     // Add current uptime as query parameter
     if !cfg.nouptime {
-        request_builder =
-            request_builder.query(&[("uptime", uptime_lib::get()?.as_secs().to_string())]);
+        request.query("uptime", uptime_lib::get().unwrap().as_secs().to_string().as_str());
     }
 
-    let request = request_builder.build()?;
+    // Add timeout if specified
+    if let Some(http_timeout) = cfg.timeout {
+        let timeout = Duration::from_secs(http_timeout.into()).as_millis() as u64;
+        request.timeout_read(timeout);
+        request.timeout_write(timeout);
+        request.timeout_connect(timeout);
+    }
 
-    info!("Requesting {}: {}", cfg.method, request.url().as_str());
-    Ok(client.execute(request)?)
+    request.call()
 }
