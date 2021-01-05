@@ -755,7 +755,7 @@ checksum = "7e7811dd7f9398f14cc76efd356f98f03aa30419dea46aa810d71e819fc97158"
 
 [[package]]
 name = "watchcat-service"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "dns-lookup",
  "humantime",

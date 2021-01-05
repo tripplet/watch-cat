@@ -77,23 +77,27 @@ fn main() {
     agent.build();
 
     // Preform DNS pre check loop if configured
-    if let Some(check_dns_interval) = cfg.checkdns {
-        if check_dns_interval > 0 {
-            check_dns(check_dns_interval, cfg.url.domain().unwrap());
-        }
+    match cfg.checkdns {
+        Some(interval) if interval > 0 => check_dns(interval, cfg.url.domain().unwrap()),
+        _ => (),
     }
 
     loop {
         // Send the HTTP request
         let resp = send_request(&agent, &cfg);
-        if resp.ok() {
-            let status = resp.status();
-            match resp.into_string() {
-                Ok(resp_str) => info!("Response {}: \"{}\"", status, resp_str),
-                Err(err) => error!("Error receiving response: {:?}", err),
+        match resp {
+            Ok(resp) => {
+                if resp.ok() {
+                    let status = resp.status();
+                    match resp.into_string() {
+                        Ok(resp_str) => info!("Response {}: \"{}\"", status, resp_str),
+                        Err(err) => error!("Error receiving response: {:?}", err),
+                    }
+                } else {
+                    error!("Error during request: {:?}", resp.synthetic_error());
+                }
             }
-        } else {
-            error!("Error during request: {:?}", resp.synthetic_error());
+            Err(err) => error!("Error during request: {}", err),
         }
 
         if let Some(repeat_interval) = cfg.repeat {
@@ -109,23 +113,26 @@ fn check_dns(interval: u16, domain: &str) {
     info!("Checking DNS");
 
     loop {
-        if let Ok(dns_entries) = dns_lookup::lookup_host(domain) {
-            info!("DNS lookup successful: {} -> {}", domain, dns_entries[0]);
-            break;
-        } else {
-            info!("DNS lookup failed, retrying in {} seconds", interval);
-            thread::sleep(Duration::from_secs(interval.into()));
+        match dns_lookup::lookup_host(domain) {
+            Ok(dns_entries) => {
+                info!("DNS lookup successful: {} -> {}", domain, dns_entries[0]);
+                break;
+            }
+            Err(err) => {
+                info!("DNS lookup failed '{}', retrying in {} seconds", err, interval);
+                thread::sleep(Duration::from_secs(interval.into()));
+            }
         }
     }
 }
 
 /// Send a HTTP request
-fn send_request(agent: &Agent, cfg: &Config) -> Response {
+fn send_request(agent: &Agent, cfg: &Config) -> Result<Response, String> {
     let mut request = agent.request(cfg.method.as_str(), cfg.url.as_str());
 
     // Add current uptime as query parameter
     if !cfg.nouptime {
-        request.query("uptime", uptime_lib::get().unwrap().as_secs().to_string().as_str());
+        request.query("uptime", uptime_lib::get()?.as_secs().to_string().as_str());
     }
 
     // Add timeout if specified
@@ -136,5 +143,5 @@ fn send_request(agent: &Agent, cfg: &Config) -> Response {
         request.timeout_connect(timeout);
     }
 
-    request.call()
+    Ok(request.call())
 }
