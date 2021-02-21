@@ -1,4 +1,4 @@
-use std::{thread, time::Duration};
+use std::{thread, time::Duration, error};
 
 // Logging
 use log::{error, info, LevelFilter};
@@ -65,16 +65,15 @@ fn main() {
     info!("{:?}", &cfg);
 
     // Create HTTP agent
-    let mut agent = ureq::agent();
+    let mut agent_builder = ureq::builder();
+    let user_agent = format!("watchcat-service/{}", env!("CARGO_PKG_VERSION"));
 
-    // Add the secret key as authorization header
-    if let Some(key) = &cfg.key {
-        agent.auth_kind("Bearer", key);
+    // Add timeout if specified
+    if let Some(http_timeout) = cfg.timeout {
+        agent_builder = agent_builder.timeout(Duration::from_secs(http_timeout.into()));
     }
 
-    agent.set("Content-Length", "0");
-    agent.set("User-Agent", format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")).as_str());
-    agent.build();
+    let agent = agent_builder.build();
 
     // Preform DNS pre check loop if configured
     match cfg.checkdns {
@@ -84,17 +83,13 @@ fn main() {
 
     loop {
         // Send the HTTP request
-        let resp = send_request(&agent, &cfg);
+        let resp = send_request(&agent, &cfg, user_agent.as_str());
         match resp {
             Ok(resp) => {
-                if resp.ok() {
-                    let status = resp.status();
-                    match resp.into_string() {
-                        Ok(resp_str) => info!("Response {}: \"{}\"", status, resp_str),
-                        Err(err) => error!("Error receiving response: {:?}", err),
-                    }
-                } else {
-                    error!("Error during request: {:?}", resp.synthetic_error());
+                let status = resp.status();
+                match resp.into_string() {
+                    Ok(resp_str) => info!("Response {}: \"{}\"", status, resp_str),
+                    Err(err) => error!("Error receiving response: {:?}", err),
                 }
             }
             Err(err) => error!("Error during request: {}", err),
@@ -127,21 +122,21 @@ fn check_dns(interval: u16, domain: &str) {
 }
 
 /// Send a HTTP request
-fn send_request(agent: &Agent, cfg: &Config) -> Result<Response, String> {
+fn send_request(agent: &Agent, cfg: &Config, user_agent: &str) -> Result<Response, Box<dyn error::Error>> {
     let mut request = agent.request(cfg.method.as_str(), cfg.url.as_str());
 
     // Add current uptime as query parameter
     if !cfg.nouptime {
-        request.query("uptime", uptime_lib::get()?.as_secs().to_string().as_str());
+        request = request.query("uptime", uptime_lib::get()?.as_secs().to_string().as_str());
     }
 
-    // Add timeout if specified
-    if let Some(http_timeout) = cfg.timeout {
-        let timeout = Duration::from_secs(http_timeout.into()).as_millis() as u64;
-        request.timeout_read(timeout);
-        request.timeout_write(timeout);
-        request.timeout_connect(timeout);
+    // Add the secret key as authorization header
+    if let Some(key) = &cfg.key {
+        request = request.set("Authorization", format!("Bearer {}", key).as_str());
     }
 
-    Ok(request.call())
+    request = request.set("Content-Length", "0");
+    request = request.set("User-Agent", user_agent);
+
+    Ok(request.call()?)
 }
