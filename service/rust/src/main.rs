@@ -66,7 +66,7 @@ fn main() {
 
     // Create HTTP agent
     let mut agent_builder = ureq::builder();
-    let user_agent = format!("watchcat-service/{}", env!("CARGO_PKG_VERSION"));
+    let user_agent = &*format!("watchcat-service/{}", env!("CARGO_PKG_VERSION"));
 
     // Add timeout if specified
     if let Some(http_timeout) = cfg.timeout {
@@ -83,7 +83,7 @@ fn main() {
 
     loop {
         // Send the HTTP request
-        let resp = send_request(&agent, &cfg, user_agent.as_str());
+        let resp = send_request(&agent, &cfg, user_agent);
         match resp {
             Ok(resp) => {
                 let status = resp.status();
