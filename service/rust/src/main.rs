@@ -1,58 +1,58 @@
-use std::{thread, time::Duration, error};
+use std::{error, thread, time::Duration};
 
 // Logging
 use log::{error, info, LevelFilter};
 use simple_logger::SimpleLogger;
 
 // Network related
-use dns_lookup;
 use ureq::{Agent, Response};
 use url::Url;
 
 // Other stuff
-use humantime;
-use structopt::StructOpt;
-use uptime_lib;
+use clap::Parser;
 
 // The main config
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Service for sending requests to the watchcat backend.")]
+#[derive(Debug, Parser)]
+#[clap(
+    version,
+    about = "Service for sending requests to the watchcat backend."
+)]
 struct Config {
     /// Url where to send requests
-    #[structopt(short, parse(try_from_str = Url::parse), long, env)]
+    #[clap(short, parse(try_from_str = Url::parse), long, env)]
     url: Url,
 
     /// HTTP method to use
-    #[structopt(long, default_value = "POST", env)]
+    #[clap(long, default_value = "POST", env)]
     method: String,
 
     /// Secret key to use
-    #[structopt(long, env, hide_env_values = true)]
+    #[clap(long, env, hide_env_values = true)]
     key: Option<String>,
 
     /// Repeat request after interval, with units 'ms', 's', 'm', 'h', e.g. 2m30s
-    #[structopt(long, parse(try_from_str = humantime::parse_duration), env)]
+    #[clap(long, parse(try_from_str = humantime::parse_duration), env)]
     repeat: Option<Duration>,
 
     /// Timeout for http request in seconds
-    #[structopt(long, env)]
+    #[clap(long, env)]
     timeout: Option<u16>,
 
     /// Check dns every x seconds before first request, for faster inital signal in case of long allowed timeout
-    #[structopt(long, env)]
+    #[clap(long, env)]
     checkdns: Option<u16>,
 
     /// Do not send uptime in heartbeat requests
-    #[structopt(long, env)]
+    #[clap(long, env)]
     nouptime: bool,
 
     /// Verbose mode
-    #[structopt(short, long)]
+    #[clap(short, long)]
     verbose: bool,
 }
 
 fn main() {
-    let cfg = Config::from_args(); // Parse arguments
+    let cfg = Config::parse(); // Parse arguments
 
     // Initialize logger
     SimpleLogger::new().init().unwrap();
