@@ -58,7 +58,7 @@ func main() {
 	debug.SetGCPercent(1)
 
 	// Repeat heartbeat forever
-	for _ = range time.Tick(delay) {
+	for range time.Tick(delay) {
 		go sendRequestAndCleanup()
 	}
 }
