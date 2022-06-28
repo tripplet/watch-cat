@@ -1,4 +1,4 @@
-use std::{error, thread, time::Duration};
+use std::{error, sync::Arc, thread, time::Duration};
 
 // Logging
 use log::{error, info, LevelFilter};
@@ -8,7 +8,7 @@ use simple_logger::SimpleLogger;
 use ureq::{Agent, Response};
 use url::Url;
 
-// Other stuff
+// Parse cmdline arguments
 use clap::Parser;
 
 // The main config
@@ -73,7 +73,9 @@ fn main() {
         agent_builder = agent_builder.timeout(Duration::from_secs(http_timeout.into()));
     }
 
-    let agent = agent_builder.build();
+    let agent = agent_builder
+        .tls_connector(Arc::new(native_tls::TlsConnector::new().unwrap()))
+        .build();
 
     // Preform DNS pre check loop if configured
     match cfg.checkdns {
@@ -88,11 +90,11 @@ fn main() {
             Ok(resp) => {
                 let status = resp.status();
                 match resp.into_string() {
-                    Ok(resp_str) => info!("Response {}: \"{}\"", status, resp_str),
-                    Err(err) => error!("Error receiving response: {:?}", err),
+                    Ok(resp_str) => info!("Response {status}: \"{resp_str}\""),
+                    Err(err) => error!("Error receiving response: {err:?}"),
                 }
             }
-            Err(err) => error!("Error during request: {}", err),
+            Err(err) => error!("Error during request: {err}"),
         }
 
         if let Some(repeat_interval) = cfg.repeat {
@@ -110,11 +112,14 @@ fn check_dns(interval: u16, domain: &str) {
     loop {
         match dns_lookup::lookup_host(domain) {
             Ok(dns_entries) => {
-                info!("DNS lookup successful: {} -> {}", domain, dns_entries[0]);
+                info!(
+                    "DNS lookup successful: {domain} -> {ip}",
+                    ip = dns_entries[0]
+                );
                 break;
             }
             Err(err) => {
-                info!("DNS lookup failed '{}', retrying in {} seconds", err, interval);
+                info!("DNS lookup failed '{err}', retrying in {interval} seconds");
                 thread::sleep(Duration::from_secs(interval.into()));
             }
         }
@@ -122,7 +127,11 @@ fn check_dns(interval: u16, domain: &str) {
 }
 
 /// Send a HTTP request
-fn send_request(agent: &Agent, cfg: &Config, user_agent: &str) -> Result<Response, Box<dyn error::Error>> {
+fn send_request(
+    agent: &Agent,
+    cfg: &Config,
+    user_agent: &str,
+) -> Result<Response, Box<dyn error::Error>> {
     let mut request = agent.request(cfg.method.as_str(), cfg.url.as_str());
 
     // Add current uptime as query parameter
@@ -132,7 +141,7 @@ fn send_request(agent: &Agent, cfg: &Config, user_agent: &str) -> Result<Respons
 
     // Add the secret key as authorization header
     if let Some(key) = &cfg.key {
-        request = request.set("Authorization", format!("Bearer {}", key).as_str());
+        request = request.set("Authorization", format!("Bearer {key}").as_str());
     }
 
     request = request.set("Content-Length", "0");
