@@ -35,8 +35,8 @@ struct Config {
     repeat: Option<Duration>,
 
     /// Timeout for http request in seconds
-    #[clap(long, env)]
-    timeout: Option<u16>,
+    #[clap(long, default_value = "30", env)]
+    timeout: u16,
 
     /// Check dns every x seconds before first request, for faster inital signal in case of long allowed timeout
     #[clap(long, env)]
@@ -65,15 +65,9 @@ fn main() {
     info!("{:?}", &cfg);
 
     // Create HTTP agent
-    let mut agent_builder = ureq::builder();
-    let user_agent = &*format!("watchcat-service/{}", env!("CARGO_PKG_VERSION"));
-
-    // Add timeout if specified
-    if let Some(http_timeout) = cfg.timeout {
-        agent_builder = agent_builder.timeout(Duration::from_secs(http_timeout.into()));
-    }
-
-    let agent = agent_builder
+    let agent = ureq::builder()
+        .user_agent(&*format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")))
+        .timeout(Duration::from_secs(cfg.timeout.into()))
         .tls_connector(Arc::new(native_tls::TlsConnector::new().unwrap()))
         .build();
 
@@ -85,7 +79,7 @@ fn main() {
 
     loop {
         // Send the HTTP request
-        let resp = send_request(&agent, &cfg, user_agent);
+        let resp = send_request(&agent, &cfg);
         match resp {
             Ok(resp) => {
                 let status = resp.status();
@@ -127,11 +121,7 @@ fn check_dns(interval: u16, domain: &str) {
 }
 
 /// Send a HTTP request
-fn send_request(
-    agent: &Agent,
-    cfg: &Config,
-    user_agent: &str,
-) -> Result<Response, Box<dyn error::Error>> {
+fn send_request(agent: &Agent, cfg: &Config) -> Result<Response, Box<dyn error::Error>> {
     let mut request = agent.request(cfg.method.as_str(), cfg.url.as_str());
 
     // Add current uptime as query parameter
@@ -145,7 +135,6 @@ fn send_request(
     }
 
     request = request.set("Content-Length", "0");
-    request = request.set("User-Agent", user_agent);
 
     Ok(request.call()?)
 }
