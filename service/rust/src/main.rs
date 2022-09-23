@@ -1,4 +1,4 @@
-use std::{error, sync::Arc, thread, time::Duration};
+use std::{error, sync::Arc, thread, time::Duration, net::{ToSocketAddrs, SocketAddr}};
 
 // Logging
 use log::{error, info, LevelFilter};
@@ -103,12 +103,14 @@ fn main() {
 fn check_dns(interval: u16, domain: &str) {
     info!("Checking DNS");
 
+    let socket_addr = format!("{}:443", domain);
+
     loop {
-        match dns_lookup::lookup_host(domain) {
-            Ok(dns_entries) => {
+        match socket_addr.to_socket_addrs() {
+            Ok(mut dns_entries) => {
                 info!(
-                    "DNS lookup successful: {domain} -> {ip}",
-                    ip = dns_entries[0]
+                    "DNS lookup successful: {domain} -> {ips}",
+                    ips = to_ip_list(&mut dns_entries)
                 );
                 break;
             }
@@ -137,4 +139,10 @@ fn send_request(agent: &Agent, cfg: &Config) -> Result<Response, Box<dyn error::
     request = request.set("Content-Length", "0");
 
     Ok(request.call()?)
+}
+
+fn to_ip_list(ips: &mut dyn Iterator<Item = SocketAddr>) -> String {
+    ips
+        .map(|addr| addr.ip().to_string())
+        .reduce(|a, b| format!("{a}, {b}")).unwrap_or_else(|| "".to_string())
 }
