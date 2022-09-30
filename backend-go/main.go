@@ -1,26 +1,31 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"html/template"
 	"mime"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/timshannon/bolthold"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 var tzLocation *time.Location
-var projectID string
-var store *bolthold.Store
+var db *gorm.DB
 
 func main() {
 	var err error
 
-	store, err = bolthold.Open("database", 0644, nil)
+	db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
-		//handle error
+		panic("failed to connect database")
 	}
+
+	db.AutoMigrate(&watchJob{})
 
 	// Load timezone TODO from env
 	tzLocation, _ = time.LoadLocation("Europe/Berlin")
@@ -49,6 +54,7 @@ func main() {
 	// Routes
 	r.GET("/", handleRootPage)
 	r.GET("/log/:job", handleLogPage)
+	r.GET("/job/:job", handleJobPage)
 
 	r.GET("/debug", handleDebugPage)
 	r.GET("/create/:job", create)
@@ -56,12 +62,11 @@ func main() {
 	r.GET("/notify/:job", notifyTest)
 	r.GET("/task/:key", executeTask)
 
+	r.Use(middlewareIPBlocking()) // Add IP blocking middleware
+
 	// Public API
 	api := r.Group("/api/v2")
-	//api.Use(middlewareIPBlocking(client)) // Add IP blocking middleware
-	api.GET("/job/:key", jobUpdate)
-
-	r.AppEngine = true
+	api.POST("/job/update", jobUpdate)
 
 	r.Run("127.0.0.1:8080")
 }
@@ -69,16 +74,39 @@ func main() {
 func create(c *gin.Context) {
 	newJobName := c.Param("job")
 	c.String(http.StatusOK, newJobName)
+
+	var key string
+	for {
+		randomBytes := make([]byte, 128)
+		_, err := rand.Read(randomBytes)
+		if err != nil {
+			panic(err)
+		}
+
+		key = base64.StdEncoding.EncodeToString(randomBytes)
+		key = strings.Replace(key, "=", "", -1)
+		key = strings.Replace(key, "+", "", -1)
+		key = strings.Replace(key, "/", "", -1)
+
+		if len(key) < 48 {
+			continue
+		} else {
+			key = key[:48]
+			break
+		}
+	}
+
+	db.Create(&watchJob{
+		Name:     newJobName,
+		Enabled:  true,
+		Interval: 5 * 60, // 5 minutes
+		Secret:   key,
+		Status:   "offline",
+	})
 }
 
 func notifyTest(c *gin.Context) {
-	jobName := c.Param("job")
-
-	if jobName == "" {
-		//incBlockIP(client, c)
-		c.AbortWithStatus(http.StatusNotFound)
-		return
-	}
+	//jobName := c.Param("job")
 
 	// jobDoc, err := client.Collection("WatchJob").Where("name", "==", jobName).Documents(c.Request.Context()).Next()
 	// if err != nil {

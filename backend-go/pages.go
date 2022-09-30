@@ -12,26 +12,14 @@ import (
 )
 
 func getJobs(ctx context.Context) ([]watchJob, error) {
-	// jobs, err := client.Collection("WatchJob").Documents(ctx).GetAll()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	var jobs []watchJob
 
-	return nil, nil
+	result := db.Model(&watchJob{}).Find(&jobs)
+	if result.Error != nil {
+		return nil, result.Error
+	}
 
-	// var renderJobs []watchJob
-
-	// for _, jobDoc := range jobs {
-	// 	var job watchJob
-
-	// 	if err := jobDoc.DataTo(&job); err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	renderJobs = append(renderJobs, job)
-	// }
-
-	// return renderJobs, nil
+	return jobs, nil
 }
 
 func handleRootPage(c *gin.Context) {
@@ -46,6 +34,10 @@ func handleRootPage(c *gin.Context) {
 }
 
 func handleLogPage(c *gin.Context) {
+	//c.HTML(http.StatusOK, "log.htm", gin.H{"job": jobs[0]})
+}
+
+func handleJobPage(c *gin.Context) {
 	//c.HTML(http.StatusOK, "log.htm", gin.H{"job": jobs[0]})
 }
 

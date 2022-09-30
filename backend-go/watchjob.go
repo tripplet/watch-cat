@@ -2,161 +2,175 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
 )
 
 type watchJob struct {
-	Name              string        `json:"name"`
-	LastSeen          time.Time     `json:"last_seen"`
-	Uptime            time.Duration `json:"uptime"`
-	Enabled           bool          `json:"enabled"`
-	Status            string        `json:"status"`
-	Interval          int           `json:"interval"`
-	Secret            string        `json:"secret"`
-	LastIP            string        `json:"last_ip"`
-	LastIPv4          string        `json:"last_ipv4"`
-	LastIPv6          string        `json:"last_ipv6"`
-	TaskName          string        `json:"task_name"`
-	TimeoutActions    []int64       `json:"actions_timeout"`
-	BackOnlineActions []int64       `json:"actions_back_online"`
-	RebootActions     []int64       `json:"actions_reboot"`
+	ID                uint
+	Name              string
+	LastSeen          time.Time
+	Uptime            time.Duration
+	Enabled           bool
+	Status            string
+	Interval          int
+	Secret            string
+	LastIP            string
+	LastIPv4          string
+	LastIPv6          string
+	TimeoutActions    []actionData `gorm:"many2many:timeout_actions;"`
+	BackOnlineActions []actionData `gorm:"many2many:backonline_actions;"`
+	RebootActions     []actionData `gorm:"many2many:reboot_actions;"`
 }
 
 // getWatchJobForSecret gets a watchJob from the firestore api based on the given secret
-func getWatchJobForSecret(ctx context.Context, secret string) (*watchJob, *firestore.DocumentRef, error) {
+func getWatchJobForSecret(ctx context.Context, secret string) (*watchJob, error) {
 	if secret == "" {
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	return nil, nil, nil
+	var job watchJob
+	result := db.Where("secret = ?", secret).First(&job)
+	if result.Error != nil {
+		return nil, result.Error
+	}
 
-	// jobDoc, err := client.Collection("WatchJob").Where("secret", "==", secret).Documents(ctx).GetAll()
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
+	return &job, nil
+}
 
-	// if len(jobDoc) != 1 {
-	// 	return nil, nil, nil
-	// }
+// Get the secret from the request
+func getSecretFromRequest(c *gin.Context) string {
+	authHeaderParts := strings.Split(c.GetHeader("Authorization"), " ")
 
-	// var job watchJob
-	// if err := jobDoc[0].DataTo(&job); err != nil {
-	// 	return nil, nil, err
-	// }
+	if len(authHeaderParts) != 2 || authHeaderParts[0] != "Bearer" {
+		return ""
+	}
 
-	// return &job, jobDoc[0].Ref, nil
+	return authHeaderParts[1]
 }
 
 func jobUpdate(c *gin.Context) {
-	// ctx := c.Request.Context()
+	ctx := c.Request.Context()
 
-	// job, jobDoc, err := getWatchJobForSecret(ctx, c.Param("key"))
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return
-	// } else if job == nil {
-	// 	incBlockIP(client, c)
-	// 	c.AbortWithStatus(http.StatusNotFound)
-	// 	return
-	// }
+	secret := getSecretFromRequest(c)
+	if secret == "" {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 
-	// job.LastSeen = time.Now().UTC()
+	job, err := getWatchJobForSecret(ctx, secret)
+	if err != nil {
+		log.Println(err)
+		return
+	} else if job == nil {
+		incBlockIP(c)
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
 
-	// remoteIP, _, err := net.SplitHostPort(c.Request.RemoteAddr)
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return
-	// }
+	log.Printf("Job %s updated", job.Name)
 
-	// if remoteIP != job.LastIP && remoteIP != job.LastIPv4 && remoteIP != job.LastIPv6 {
-	// 	// TODO LogEntry.log_event(self.key(), "Info', 'IP changed - new IP: ' + remote_ip)
-	// }
+	// Found the job now update it and perform the necessary actions
+	job.LastSeen = time.Now().UTC()
 
-	// job.LastIP = remoteIP
-	// if strings.Contains(remoteIP, ":") {
-	// 	job.LastIPv6 = remoteIP
-	// } else {
-	// 	job.LastIPv4 = remoteIP
-	// }
+	remoteIP, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-	// uptime := time.Duration(0)
-	// uptimeStr := c.Query("uptime")
-	// if uptimeStr != "" {
-	// 	uptimeSeconds, err := strconv.ParseInt(uptimeStr, 10, 64)
-	// 	if err != nil {
-	// 		incBlockIP(client, c)
-	// 		c.AbortWithStatus(http.StatusBadRequest)
-	// 		log.Println(err)
-	// 		return
-	// 	}
+	if remoteIP != job.LastIP && remoteIP != job.LastIPv4 && remoteIP != job.LastIPv6 {
+		// TODO LogEntry.log_event(self.key(), "Info', 'IP changed - new IP: ' + remote_ip)
+	}
 
-	// 	uptime = time.Duration(uptimeSeconds) * time.Second
+	job.LastIP = remoteIP
+	if strings.Contains(remoteIP, ":") {
+		job.LastIPv6 = remoteIP
+	} else {
+		job.LastIPv4 = remoteIP
+	}
 
-	// 	if job.Uptime != 0 && job.Uptime > uptime {
-	// 		//TODO LogEntry.log_event(self.key(), 'Reboot', 'Reboot - Previous uptime: ' + str(timedelta(seconds=self.uptime)))
+	uptime := time.Duration(0)
+	uptimeStr := c.Query("uptime")
+	if uptimeStr != "" {
+		uptimeSeconds, err := strconv.ParseInt(uptimeStr, 10, 64)
+		if err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
 
-	// 		//for _, _ := range job.RebootActions {
-	// 		// TODO
-	// 		//}
+		uptime = time.Duration(uptimeSeconds) * time.Second
 
-	// 	}
+		if job.Uptime != 0 && job.Uptime > uptime {
+			//TODO LogEntry.log_event(self.key(), 'Reboot', 'Reboot - Previous uptime: ' + str(timedelta(seconds=self.uptime)))
 
-	// 	job.Uptime = uptime
-	// }
+			//for _, _ := range job.RebootActions {
+			// TODO
+			//}
 
-	// // job got back online
-	// if job.Status == "offline" {
-	// 	job.Status = "online"
-	// 	// TODOLogEntry.log_event(self.key(), "Info", "Job back online - IP: " + remote_ip)
+		}
 
-	// 	// Perform all back online actions
-	// 	//for _, _ := range job.BackOnlineActions {
-	// 	// TODO
-	// 	//}
-	// }
+		job.Uptime = uptime
+	}
 
-	// // Delete previous (waiting) task
+	// job got back online
+	if job.Status == "offline" {
+		job.Status = "online"
+		// TODOLogEntry.log_event(self.key(), "Info", "Job back online - IP: " + remote_ip)
+
+		// Perform all back online actions
+		//for _, _ := range job.BackOnlineActions {
+		// TODO
+		//}
+	}
+
+	// Delete previous (waiting) task
 	// if job.TaskName != "" {
-	// 	/*taskqueue.Delete(c.Request.Context(), &taskqueue.Task{Name: job.TaskName}, "")
-	// 	if err != nil {
-	// 		log.Println(err)
-	// 		return
-	// 	}
-	// 	*/
+	/*taskqueue.Delete(c.Request.Context(), &taskqueue.Task{Name: job.TaskName}, "")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	*/
 	// }
 
-	// newTaskName := job.Name + "_" + time.Now().UTC().Format("2006-01-02_15-04-05")
-	// fmt.Println(newTaskName)
+	newTaskName := job.Name + "_" + time.Now().UTC().Format("2006-01-02_15-04-05")
+	fmt.Println(newTaskName)
 
-	// // appEngineClient, err := cloudtasks.NewClient(ctx, option.WithCredentialsFile("appEngineAccount.json"))
+	// appEngineClient, err := cloudtasks.NewClient(ctx, option.WithCredentialsFile("appEngineAccount.json"))
 
-	// // req := &taskspb.CreateQueueRequest{
-	// // 	// TODO: Fill request struct fields.
-	// // }
+	// req := &taskspb.CreateQueueRequest{
+	// 	// TODO: Fill request struct fields.
+	// }
 
-	// // resp, err := c.CreateQueue(ctx, req)
-	// // if err != nil {
-	// // 	// TODO: Handle error.
-	// // }
+	// resp, err := c.CreateQueue(ctx, req)
+	// if err != nil {
+	// 	// TODO: Handle error.
+	// }
 
-	// /*// Create task to be executed in updated no called in interval minutes
-	// newTask, err := taskqueue.Add(gae,
-	// 	&taskqueue.Task{
-	// 		Name:    newTaskName,
-	// 		Delay:   time.Duration(job.Interval+2) * time.Minute,
-	// 		Path:    "/task",
-	// 		Method:  "POST",
-	// 		Payload: []byte(jobDoc.Path),
-	// 	}, "timeouts")
+	/*// Create task to be executed in updated no called in interval minutes
+	newTask, err := taskqueue.Add(gae,
+		&taskqueue.Task{
+			Name:    newTaskName,
+			Delay:   time.Duration(job.Interval+2) * time.Minute,
+			Path:    "/task",
+			Method:  "POST",
+			Payload: []byte(jobDoc.Path),
+		}, "timeouts")
 
-	// //(name=task_name, url="/task", params={"key": self.key()}, )
+	//(name=task_name, url="/task", params={"key": self.key()}, )
 
-	// _ = newTask
-	// job.TaskName = newTaskName
-	// */
+	_ = newTask
+	job.TaskName = newTaskName
+	*/
 
 	// jobDoc.Set(ctx, job)
 }

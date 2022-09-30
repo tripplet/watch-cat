@@ -2,12 +2,11 @@
 <head>
   <meta content="yes" name="apple-mobile-web-app-capable"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1 minimum-scale=1.0, maximum-scale=0.6667, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="apple-touch-icon" href="/assets/favicon.png"/>
   <link rel="stylesheet" href="/assets/css/bootstrap.min.css"/>
-  <script src="/assets/js/jquery-3.4.1.slim.min.js"></script>
-  <script src="/assets/js/bootstrap.min.js"></script>
   <link rel="stylesheet" href="/assets/css/app.css"/>
+  <script src="/assets/js/bootstrap.min.js"></script>
 </head>
 <body>
 <nav class="navbar navbar-light navbar-expand-sm bg-light">
@@ -20,9 +19,9 @@
   {{ range .jobs }}
   <ul id="{{ .Name }}" class="list-group">
     <li class="list-group-item d-flex justify-content-between align-items-center {{ .Status }}-job"><h3><a href="log/{{ .Name }}">{{ .Name }}{{ if .Enabled|not }}&nbsp;(Disabled){{ end }}</a></h3></li>
-    <li class="list-group-item d-flex justify-content-between align-items-center">{{ .LastSeen|format_datetime }}<span class="badge badge-secondary badge-pill">&nbsp;Last seen&nbsp;</span></li>
-    <li class="list-group-item d-flex justify-content-between align-items-center"><span>{{ .LastIP|add_breakchars}}</span><span class="badge badge-secondary badge-pill">&nbsp;IP&nbsp;</span></li>
-    <li class="list-group-item d-flex justify-content-between align-items-center">{{ if .Status|eq "offline" }}Was&nbsp;{{ end }}{{ .Uptime|format_timespan }}<span class="badge badge-secondary badge-pill">&nbsp;Uptime&nbsp;</span></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">{{ .LastSeen|format_datetime }}<span class="badge bg-secondary rounded-pill">&nbsp;Last seen&nbsp;</span></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center"><span>{{ .LastIP|add_breakchars}}</span><span class="badge bg-secondary rounded-pill">&nbsp;IP&nbsp;</span></li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">{{ if .Status|eq "offline" }}Was&nbsp;{{ end }}{{ .Uptime|format_timespan }}<span class="badge bg-secondary rounded-pill">&nbsp;Uptime&nbsp;</span></li>
   </ul>
   {{ end }}
 </div>

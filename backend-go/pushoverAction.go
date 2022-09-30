@@ -9,10 +9,11 @@ import (
 )
 
 type pushoverAction struct {
-	actionDoc
-	Token       string   `firestore:"token"`
-	UserKeys    []string `firestore:"user"`
-	CustomSound string   `firestore:"sound"`
+	actionData
+	IsFailureAction bool
+	Token           string
+	UserKeys        []string
+	CustomSound     string
 }
 
 type apiData struct {
@@ -66,8 +67,12 @@ func (a *pushoverAction) Run() error {
 		}
 
 		if response.StatusCode != http.StatusOK {
-			errors = append(errors, fmt.Errorf("Pushover service responded with %d", response.StatusCode))
+			errors = append(errors, fmt.Errorf("pushover service responded with %d", response.StatusCode))
 		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("pushover service responded with %d errors", len(errors))
 	}
 
 	return nil
