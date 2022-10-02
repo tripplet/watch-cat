@@ -11,10 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getJobs(ctx context.Context) ([]watchJob, error) {
+func (env *Env) getJobs(ctx context.Context) ([]watchJob, error) {
 	var jobs []watchJob
 
-	result := db.Model(&watchJob{}).Find(&jobs)
+	result := env.db.Model(&watchJob{}).Find(&jobs)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -22,8 +22,8 @@ func getJobs(ctx context.Context) ([]watchJob, error) {
 	return jobs, nil
 }
 
-func handleRootPage(c *gin.Context) {
-	jobs, err := getJobs(c.Request.Context())
+func (env *Env) handleRootPage(c *gin.Context) {
+	jobs, err := env.getJobs(c.Request.Context())
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		log.Println(err)
@@ -33,16 +33,16 @@ func handleRootPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "root.htm", gin.H{"jobs": jobs})
 }
 
-func handleLogPage(c *gin.Context) {
+func (env *Env) handleLogPage(c *gin.Context) {
 	//c.HTML(http.StatusOK, "log.htm", gin.H{"job": jobs[0]})
 }
 
-func handleJobPage(c *gin.Context) {
+func (env *Env) handleJobPage(c *gin.Context) {
 	//c.HTML(http.StatusOK, "log.htm", gin.H{"job": jobs[0]})
 }
 
-func handleDebugPage(c *gin.Context) {
-	jobs, err := getJobs(c.Request.Context())
+func (env *Env) handleDebugPage(c *gin.Context) {
+	jobs, err := env.getJobs(c.Request.Context())
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		log.Println(err)

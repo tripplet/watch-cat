@@ -20,7 +20,7 @@ func (a *mailAction) Run() {
 	a.UpdateLastPerformed()
 
 	msg := &mail.Message{
-		Sender:  "event@", // + projectID + ".appspotmail.com",
+		Sender:  "event@", // + projectID + ".appspotmail.com", TODO
 		To:      []string{a.Address},
 		Subject: a.Subject,
 		Body:    a.Message,

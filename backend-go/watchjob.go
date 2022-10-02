@@ -25,19 +25,20 @@ type watchJob struct {
 	LastIP            string
 	LastIPv4          string
 	LastIPv6          string
+	TaskName          string
 	TimeoutActions    []actionData `gorm:"many2many:timeout_actions;"`
 	BackOnlineActions []actionData `gorm:"many2many:backonline_actions;"`
 	RebootActions     []actionData `gorm:"many2many:reboot_actions;"`
 }
 
-// getWatchJobForSecret gets a watchJob from the firestore api based on the given secret
-func getWatchJobForSecret(ctx context.Context, secret string) (*watchJob, error) {
+// Gets a watchJob based on the given secret
+func (env *Env) getWatchJobForSecret(ctx context.Context, secret string) (*watchJob, error) {
 	if secret == "" {
 		return nil, nil
 	}
 
 	var job watchJob
-	result := db.Where("secret = ?", secret).First(&job)
+	result := env.db.Where("secret = ?", secret).First(&job)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -46,7 +47,7 @@ func getWatchJobForSecret(ctx context.Context, secret string) (*watchJob, error)
 }
 
 // Get the secret from the request
-func getSecretFromRequest(c *gin.Context) string {
+func extractSecretFromRequest(c *gin.Context) string {
 	authHeaderParts := strings.Split(c.GetHeader("Authorization"), " ")
 
 	if len(authHeaderParts) != 2 || authHeaderParts[0] != "Bearer" {
@@ -56,16 +57,16 @@ func getSecretFromRequest(c *gin.Context) string {
 	return authHeaderParts[1]
 }
 
-func jobUpdate(c *gin.Context) {
+func (env *Env) jobUpdate(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	secret := getSecretFromRequest(c)
+	secret := extractSecretFromRequest(c)
 	if secret == "" {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	job, err := getWatchJobForSecret(ctx, secret)
+	job, err := env.getWatchJobForSecret(ctx, secret)
 	if err != nil {
 		log.Println(err)
 		return
@@ -77,7 +78,7 @@ func jobUpdate(c *gin.Context) {
 
 	log.Printf("Job %s updated", job.Name)
 
-	// Found the job now update it and perform the necessary actions
+	// Found the job now update LastSeen and perform the necessary actions
 	job.LastSeen = time.Now().UTC()
 
 	remoteIP, _, err := net.SplitHostPort(c.Request.RemoteAddr)
@@ -87,9 +88,10 @@ func jobUpdate(c *gin.Context) {
 	}
 
 	if remoteIP != job.LastIP && remoteIP != job.LastIPv4 && remoteIP != job.LastIPv6 {
-		// TODO LogEntry.log_event(self.key(), "Info', 'IP changed - new IP: ' + remote_ip)
+		env.createLogEntry(job.ID, "IP Change", fmt.Sprintf("IP changed - new IP: %s", remoteIP))
 	}
 
+	// Update the IP
 	job.LastIP = remoteIP
 	if strings.Contains(remoteIP, ":") {
 		job.LastIPv6 = remoteIP
@@ -97,6 +99,7 @@ func jobUpdate(c *gin.Context) {
 		job.LastIPv4 = remoteIP
 	}
 
+	// Update the reported uptime
 	uptime := time.Duration(0)
 	uptimeStr := c.Query("uptime")
 	if uptimeStr != "" {
@@ -109,13 +112,14 @@ func jobUpdate(c *gin.Context) {
 
 		uptime = time.Duration(uptimeSeconds) * time.Second
 
+		// Check for reboot
 		if job.Uptime != 0 && job.Uptime > uptime {
-			//TODO LogEntry.log_event(self.key(), 'Reboot', 'Reboot - Previous uptime: ' + str(timedelta(seconds=self.uptime)))
+			env.createLogEntry(job.ID, "Reboot", fmt.Sprintf("Reboot detected - old uptime: %s", job.Uptime))
 
-			//for _, _ := range job.RebootActions {
-			// TODO
-			//}
-
+			// Perform the reboot actions
+			for _, action := range job.RebootActions {
+				go action.Run()
+			}
 		}
 
 		job.Uptime = uptime
@@ -124,53 +128,35 @@ func jobUpdate(c *gin.Context) {
 	// job got back online
 	if job.Status == "offline" {
 		job.Status = "online"
-		// TODOLogEntry.log_event(self.key(), "Info", "Job back online - IP: " + remote_ip)
+		env.createLogEntry(job.ID, "Back Online", fmt.Sprintf("%s is back online - IP: %s", job.Name, remoteIP))
 
 		// Perform all back online actions
-		//for _, _ := range job.BackOnlineActions {
-		// TODO
-		//}
+		for _, action := range job.BackOnlineActions {
+			go action.Run()
+		}
 	}
 
 	// Delete previous (waiting) task
-	// if job.TaskName != "" {
-	/*taskqueue.Delete(c.Request.Context(), &taskqueue.Task{Name: job.TaskName}, "")
+	if job.TaskName != "" {
+		if err := env.dispatcher.Cancel(job.TaskName); err != nil {
+			log.Printf("Error deleting task %s: %s", job.TaskName, err)
+			return
+		}
+	}
+
+	//newTaskName := job.Name + "_" + time.Now().UTC().Format("2006-01-02_15-04-05")
+
+	// Schedule new task
+	//newTaskName, "TODO", time.Now().UTC().Add(time.Duration(job.Interval)*time.Second
+
+	newTaskName, err := env.dispatcher.Schedule(Task{})
 	if err != nil {
-		log.Println(err)
+		log.Printf("Error scheduling task %s: %s", newTaskName, err)
 		return
 	}
-	*/
-	// }
 
-	newTaskName := job.Name + "_" + time.Now().UTC().Format("2006-01-02_15-04-05")
 	fmt.Println(newTaskName)
-
-	// appEngineClient, err := cloudtasks.NewClient(ctx, option.WithCredentialsFile("appEngineAccount.json"))
-
-	// req := &taskspb.CreateQueueRequest{
-	// 	// TODO: Fill request struct fields.
-	// }
-
-	// resp, err := c.CreateQueue(ctx, req)
-	// if err != nil {
-	// 	// TODO: Handle error.
-	// }
-
-	/*// Create task to be executed in updated no called in interval minutes
-	newTask, err := taskqueue.Add(gae,
-		&taskqueue.Task{
-			Name:    newTaskName,
-			Delay:   time.Duration(job.Interval+2) * time.Minute,
-			Path:    "/task",
-			Method:  "POST",
-			Payload: []byte(jobDoc.Path),
-		}, "timeouts")
-
-	//(name=task_name, url="/task", params={"key": self.key()}, )
-
-	_ = newTask
 	job.TaskName = newTaskName
-	*/
 
-	// jobDoc.Set(ctx, job)
+	env.db.Save(&job)
 }

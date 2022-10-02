@@ -15,12 +15,16 @@ import (
 )
 
 var tzLocation *time.Location
-var db *gorm.DB
+
+type Env struct {
+	db         *gorm.DB
+	dispatcher Dispatcher
+}
 
 func main() {
 	var err error
 
-	db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -29,6 +33,14 @@ func main() {
 
 	// Load timezone TODO from env
 	tzLocation, _ = time.LoadLocation("Europe/Berlin")
+
+	// Create environment for dependency injection
+	env := &Env{
+		db:         db,
+		dispatcher: CreateDispatcher(),
+	}
+
+	env.dispatcher.Start()
 
 	r := gin.Default()
 
@@ -52,26 +64,25 @@ func main() {
 	r.StaticFile("/robots.txt", "./static/robots.txt")
 
 	// Routes
-	r.GET("/", handleRootPage)
-	r.GET("/log/:job", handleLogPage)
-	r.GET("/job/:job", handleJobPage)
+	r.GET("/", env.handleRootPage)
+	r.GET("/log/:job", env.handleLogPage)
+	r.GET("/job/:job", env.handleJobPage)
 
-	r.GET("/debug", handleDebugPage)
-	r.GET("/create/:job", create)
+	r.GET("/debug", env.handleDebugPage)
+	r.POST("/create/:job", env.create)
 
-	r.GET("/notify/:job", notifyTest)
-	r.GET("/task/:key", executeTask)
+	r.GET("/notify/:job", env.notifyTest)
 
 	r.Use(middlewareIPBlocking()) // Add IP blocking middleware
 
 	// Public API
 	api := r.Group("/api/v2")
-	api.POST("/job/update", jobUpdate)
+	api.POST("/job/update", env.jobUpdate)
 
 	r.Run("127.0.0.1:8080")
 }
 
-func create(c *gin.Context) {
+func (env *Env) create(c *gin.Context) {
 	newJobName := c.Param("job")
 	c.String(http.StatusOK, newJobName)
 
@@ -96,7 +107,7 @@ func create(c *gin.Context) {
 		}
 	}
 
-	db.Create(&watchJob{
+	env.db.Create(&watchJob{
 		Name:     newJobName,
 		Enabled:  true,
 		Interval: 5 * 60, // 5 minutes
@@ -105,7 +116,7 @@ func create(c *gin.Context) {
 	})
 }
 
-func notifyTest(c *gin.Context) {
+func (env *Env) notifyTest(c *gin.Context) {
 	//jobName := c.Param("job")
 
 	// jobDoc, err := client.Collection("WatchJob").Where("name", "==", jobName).Documents(c.Request.Context()).Next()
