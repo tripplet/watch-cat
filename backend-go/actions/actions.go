@@ -1,15 +1,15 @@
-package main
+package actions
 
 import (
 	"time"
 )
 
-type action interface {
+type Action interface {
 	Run() error
 	UpdateLastPerformed()
 }
 
-type actionData struct {
+type ActionData struct {
 	ID            uint
 	Enabled       bool
 	LastPerformed time.Time
@@ -17,6 +17,10 @@ type actionData struct {
 	Data          string
 }
 
-func (a *actionData) UpdateLastPerformed() {
+func (a *ActionData) UpdateLastPerformed() {
 	//entry, err := client.Collection("Action").Doc(ip).Get(c.Request.Context())
+}
+
+func (a *ActionData) Run() error {
+	return nil
 }

@@ -1,4 +1,4 @@
-package main
+package actions
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"google.golang.org/appengine/mail"
 )
 
-type mailAction struct {
-	actionData
+type MailAction struct {
+	ActionData
 	Address string
 	Subject string
 }
 
-func (a *mailAction) Run() {
+func (a *MailAction) Run() {
 	if !a.Enabled {
 		return
 	}

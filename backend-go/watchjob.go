@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"watchcat/actions"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,9 +28,9 @@ type watchJob struct {
 	LastIPv4          string
 	LastIPv6          string
 	TaskName          string
-	TimeoutActions    []actionData `gorm:"many2many:timeout_actions;"`
-	BackOnlineActions []actionData `gorm:"many2many:backonline_actions;"`
-	RebootActions     []actionData `gorm:"many2many:reboot_actions;"`
+	TimeoutActions    []actions.ActionData `gorm:"many2many:timeout_actions;"`
+	BackOnlineActions []actions.ActionData `gorm:"many2many:backonline_actions;"`
+	RebootActions     []actions.ActionData `gorm:"many2many:reboot_actions;"`
 }
 
 // Gets a watchJob based on the given secret

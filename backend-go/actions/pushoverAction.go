@@ -1,4 +1,4 @@
-package main
+package actions
 
 import (
 	"bytes"
@@ -8,22 +8,22 @@ import (
 	"time"
 )
 
-type pushoverAction struct {
-	actionData
+type PushoverAction struct {
+	ActionData
 	IsFailureAction bool
 	Token           string
 	UserKeys        []string
 	CustomSound     string
 }
 
-type apiData struct {
+type pushoverApiData struct {
 	Token   string `json:"token"`
 	User    string `json:"user"`
 	Message string `json:"message"`
 	Sound   string `json:"sound"`
 }
 
-func (a *pushoverAction) Run() error {
+func (a *PushoverAction) Run() error {
 	if !a.Enabled {
 		return nil
 	}
@@ -47,7 +47,7 @@ func (a *pushoverAction) Run() error {
 
 	var errors []error
 	for _, user := range a.UserKeys {
-		data, err := json.Marshal(apiData{
+		data, err := json.Marshal(pushoverApiData{
 			Token:   a.Token,
 			User:    user,
 			Message: a.Message,

@@ -16,6 +16,7 @@ import (
 
 var tzLocation *time.Location
 
+// Global environment
 type Env struct {
 	db         *gorm.DB
 	dispatcher Dispatcher
