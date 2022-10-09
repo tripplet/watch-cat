@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"watchcat/actions"
+	"watchcat/taskQueue"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,10 +28,25 @@ type watchJob struct {
 	LastIP            string
 	LastIPv4          string
 	LastIPv6          string
-	TaskName          string
+	TaskId            uint64
 	TimeoutActions    []actions.ActionData `gorm:"many2many:timeout_actions;"`
 	BackOnlineActions []actions.ActionData `gorm:"many2many:backonline_actions;"`
 	RebootActions     []actions.ActionData `gorm:"many2many:reboot_actions;"`
+}
+
+func (env *Env) cleanupTasks() error {
+	jobs, err := env.getJobs(context.Background())
+	if err != nil {
+		return err
+	}
+
+	// Reset the task id for all jobs
+	for idx := range jobs {
+		jobs[idx].TaskId = 0
+	}
+
+	env.db.Save(jobs)
+	return nil
 }
 
 // Gets a watchJob based on the given secret
@@ -139,26 +155,36 @@ func (env *Env) jobUpdate(c *gin.Context) {
 	}
 
 	// Delete previous (waiting) task
-	if job.TaskName != "" {
-		if err := env.dispatcher.Cancel(job.TaskName); err != nil {
-			log.Printf("Error deleting task %s: %s", job.TaskName, err)
-			return
+	if job.TaskId != 0 {
+		if err := env.dispatcher.Cancel(job.TaskId); err != nil {
+			log.Printf("Error deleting task %d: %s", job.TaskId, err)
 		}
 	}
 
 	//newTaskName := job.Name + "_" + time.Now().UTC().Format("2006-01-02_15-04-05")
 
 	// Schedule new task
-	//newTaskName, "TODO", time.Now().UTC().Add(time.Duration(job.Interval)*time.Second
+	newTaskId, err := env.dispatcher.Schedule(taskQueue.Task{
+		StartIn: time.Second * time.Duration(job.Interval),
+		Fn:      func() { fmt.Println("test") },
+	})
 
-	newTaskName, err := env.dispatcher.Schedule(Task{})
 	if err != nil {
-		log.Printf("Error scheduling task %s: %s", newTaskName, err)
+		log.Printf("Error scheduling task %d: %s", newTaskId, err)
 		return
 	}
 
-	fmt.Println(newTaskName)
-	job.TaskName = newTaskName
-
+	job.TaskId = newTaskId
 	env.db.Save(&job)
+}
+
+func (env *Env) getJobs(ctx context.Context) ([]watchJob, error) {
+	var jobs []watchJob
+
+	result := env.db.Model(&watchJob{}).Find(&jobs)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return jobs, nil
 }

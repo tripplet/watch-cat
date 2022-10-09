@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,17 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-func (env *Env) getJobs(ctx context.Context) ([]watchJob, error) {
-	var jobs []watchJob
-
-	result := env.db.Model(&watchJob{}).Find(&jobs)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return jobs, nil
-}
 
 func (env *Env) handleRootPage(c *gin.Context) {
 	jobs, err := env.getJobs(c.Request.Context())

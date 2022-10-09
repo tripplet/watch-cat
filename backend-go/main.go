@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"watchcat/taskQueue"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -19,7 +21,7 @@ var tzLocation *time.Location
 // Global environment
 type Env struct {
 	db         *gorm.DB
-	dispatcher Dispatcher
+	dispatcher taskQueue.Dispatcher
 }
 
 func main() {
@@ -38,9 +40,10 @@ func main() {
 	// Create environment for dependency injection
 	env := &Env{
 		db:         db,
-		dispatcher: CreateDispatcher(),
+		dispatcher: taskQueue.CreateDispatcher(),
 	}
 
+	env.cleanupTasks()
 	env.dispatcher.Start()
 
 	r := gin.Default()
