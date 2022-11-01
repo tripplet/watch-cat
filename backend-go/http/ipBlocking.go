@@ -1,15 +1,16 @@
-package main
+package http
 
 import (
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type blockedIP struct {
-	InvalidRequests int
+	InvalidRequests uint32
 	LastInvalid     time.Time
 	BlockedUntil    time.Time
 }
@@ -55,7 +56,7 @@ func incBlockIP(c *gin.Context) {
 		blockedIPs[ip] = entry
 	}
 
-	entry.InvalidRequests++
+	atomic.AddUint32(&entry.InvalidRequests, 1)
 	entry.LastInvalid = time.Now().UTC()
 
 	if entry.InvalidRequests >= 9 {

@@ -1,160 +1,88 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"html/template"
-	"mime"
-	"net/http"
-	"strings"
-	"time"
+	"fmt"
+	"log"
+	"runtime/debug"
 
+	"watchcat/env"
+	"watchcat/http"
+	"watchcat/models"
 	"watchcat/taskQueue"
 
-	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-var tzLocation *time.Location
-
-// Global environment
-type Env struct {
-	db         *gorm.DB
-	dispatcher taskQueue.Dispatcher
-}
-
 func main() {
-	var err error
+	// Read the config file
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalf("fatal error config file: %s", err)
+	}
 
+	setConfigDefaults()
+
+	// Read the build info
+	info, ok := debug.ReadBuildInfo()
+	if ok {
+		fmt.Printf("Version: %s", getVersionInfo(info))
+	}
+
+	// Open the database connection
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&watchJob{})
-
-	// Load timezone TODO from env
-	tzLocation, _ = time.LoadLocation("Europe/Berlin")
+	db.AutoMigrate(&models.WatchJob{})
 
 	// Create environment for dependency injection
-	env := &Env{
-		db:         db,
-		dispatcher: taskQueue.CreateDispatcher(),
+	env := &env.Env{
+		Database:   db,
+		Dispatcher: taskQueue.CreateDispatcher(),
 	}
 
-	env.cleanupTasks()
-	env.dispatcher.Start()
+	models.CleanupTasks(env)
+	env.Dispatcher.Start()
 
-	r := gin.Default()
-
-	r.Use()
-
-	// Add template functions
-	r.SetFuncMap(template.FuncMap{
-		"format_datetime": formatDatetime,
-		"add_breakchars":  formatAddBreakChars,
-		"format_timespan": formatTimespan,
-		"lower":           formatToLower,
-	})
-
-	// Load templates
-	r.LoadHTMLGlob("templates/*.htm")
-
-	// Static assets
-	mime.AddExtensionType(".js", "application/javascript")
-	r.Static("/assets", "./static/")
-	r.StaticFile("/favicon.ico", "./static/favicon.ico")
-	r.StaticFile("/robots.txt", "./static/robots.txt")
-
-	// Routes
-	r.GET("/", env.handleRootPage)
-	r.GET("/log/:job", env.handleLogPage)
-	r.GET("/job/:job", env.handleJobPage)
-
-	r.GET("/debug", env.handleDebugPage)
-	r.POST("/create/:job", env.create)
-
-	r.GET("/notify/:job", env.notifyTest)
-
-	r.Use(middlewareIPBlocking()) // Add IP blocking middleware
-
-	// Public API
-	api := r.Group("/api/v2")
-	api.POST("/job/update", env.jobUpdate)
-
-	r.Run("127.0.0.1:8080")
+	http.Startup(env)
 }
 
-func (env *Env) create(c *gin.Context) {
-	newJobName := c.Param("job")
-	c.String(http.StatusOK, newJobName)
+func setConfigDefaults() {
+	viper.SetDefault("web.timezone", "Europe/Berlin")
+}
 
-	var key string
-	for {
-		randomBytes := make([]byte, 128)
-		_, err := rand.Read(randomBytes)
-		if err != nil {
-			panic(err)
+func getVersionInfo(info *debug.BuildInfo) string {
+	revision := ""
+	dirty := false
+	buildTime := ""
+
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.revision" {
+			revision = setting.Value
 		}
 
-		key = base64.StdEncoding.EncodeToString(randomBytes)
-		key = strings.Replace(key, "=", "", -1)
-		key = strings.Replace(key, "+", "", -1)
-		key = strings.Replace(key, "/", "", -1)
+		if setting.Key == "vcs.modified" && setting.Value == "true" {
+			dirty = true
+		}
 
-		if len(key) < 48 {
-			continue
-		} else {
-			key = key[:48]
-			break
+		if setting.Key == "vcs.time" {
+			buildTime = setting.Value
 		}
 	}
 
-	env.db.Create(&watchJob{
-		Name:     newJobName,
-		Enabled:  true,
-		Interval: 5 * 60, // 5 minutes
-		Secret:   key,
-		Status:   "offline",
-	})
-}
+	if len(revision) > 12 {
+		revision = revision[:10]
+	}
 
-func (env *Env) notifyTest(c *gin.Context) {
-	//jobName := c.Param("job")
+	if dirty {
+		revision += " (modified)"
+	}
 
-	// jobDoc, err := client.Collection("WatchJob").Where("name", "==", jobName).Documents(c.Request.Context()).Next()
-	// if err != nil {
-	// 	if status.Code(err) == codes.NotFound {
-	// 		//incBlockIP(client, c)
-	// 		c.AbortWithStatus(http.StatusNotFound)
-	// 		return
-	// 	}
-
-	// 	log.Println(err)
-	// 	return
-	// }
-
-	// var job watchJob
-	// if err := jobDoc.DataTo(&job); err != nil {
-	// 	log.Println(err)
-	// 	return
-	// }
-
-	// for _, actionRef := range job.TimeoutActions {
-	// 	doc, err := actionRef.Get(c.Request.Context())
-	// 	if err != nil {
-	// 		log.Println(err)
-	// 		return
-	// 	}
-
-	// 	// TODO handle all type of actions?
-	// 	var action pushoverAction
-	// 	if err := doc.DataTo(&action); err != nil {
-	// 		log.Println(err)
-	// 		return
-	// 	}
-
-	// 	action.Run()
-	// }
+	return fmt.Sprintf("%s %s", revision, buildTime)
 }

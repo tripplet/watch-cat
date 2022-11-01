@@ -1,7 +1,6 @@
-package main
+package http
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net"
@@ -10,59 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"watchcat/actions"
+	"watchcat/models"
 	"watchcat/taskQueue"
 
 	"github.com/gin-gonic/gin"
 )
-
-type watchJob struct {
-	ID                uint
-	Name              string
-	LastSeen          time.Time
-	Uptime            time.Duration
-	Enabled           bool
-	Status            string
-	Interval          int
-	Secret            string
-	LastIP            string
-	LastIPv4          string
-	LastIPv6          string
-	TaskId            uint64
-	TimeoutActions    []actions.ActionData `gorm:"many2many:timeout_actions;"`
-	BackOnlineActions []actions.ActionData `gorm:"many2many:backonline_actions;"`
-	RebootActions     []actions.ActionData `gorm:"many2many:reboot_actions;"`
-}
-
-func (env *Env) cleanupTasks() error {
-	jobs, err := env.getJobs(context.Background())
-	if err != nil {
-		return err
-	}
-
-	// Reset the task id for all jobs
-	for idx := range jobs {
-		jobs[idx].TaskId = 0
-	}
-
-	env.db.Save(jobs)
-	return nil
-}
-
-// Gets a watchJob based on the given secret
-func (env *Env) getWatchJobForSecret(ctx context.Context, secret string) (*watchJob, error) {
-	if secret == "" {
-		return nil, nil
-	}
-
-	var job watchJob
-	result := env.db.Where("secret = ?", secret).First(&job)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return &job, nil
-}
 
 // Get the secret from the request
 func extractSecretFromRequest(c *gin.Context) string {
@@ -75,7 +26,7 @@ func extractSecretFromRequest(c *gin.Context) string {
 	return authHeaderParts[1]
 }
 
-func (env *Env) jobUpdate(c *gin.Context) {
+func (env *HttpEnv) jobUpdate(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	secret := extractSecretFromRequest(c)
@@ -84,7 +35,7 @@ func (env *Env) jobUpdate(c *gin.Context) {
 		return
 	}
 
-	job, err := env.getWatchJobForSecret(ctx, secret)
+	job, err := models.GetWatchJobForSecret(env.global, ctx, secret)
 	if err != nil {
 		log.Println(err)
 		return
@@ -106,7 +57,7 @@ func (env *Env) jobUpdate(c *gin.Context) {
 	}
 
 	if remoteIP != job.LastIP && remoteIP != job.LastIPv4 && remoteIP != job.LastIPv6 {
-		env.createLogEntry(job.ID, "IP Change", fmt.Sprintf("IP changed - new IP: %s", remoteIP))
+		models.CreateLogEntry(env.global, job.ID, "IP Change", fmt.Sprintf("IP changed - new IP: %s", remoteIP))
 	}
 
 	// Update the IP
@@ -132,7 +83,7 @@ func (env *Env) jobUpdate(c *gin.Context) {
 
 		// Check for reboot
 		if job.Uptime != 0 && job.Uptime > uptime {
-			env.createLogEntry(job.ID, "Reboot", fmt.Sprintf("Reboot detected - old uptime: %s", job.Uptime))
+			models.CreateLogEntry(env.global, job.ID, "Reboot", fmt.Sprintf("Reboot detected - old uptime: %s", job.Uptime))
 
 			// Perform the reboot actions
 			for _, action := range job.RebootActions {
@@ -146,7 +97,7 @@ func (env *Env) jobUpdate(c *gin.Context) {
 	// job got back online
 	if job.Status == "offline" {
 		job.Status = "online"
-		env.createLogEntry(job.ID, "Back Online", fmt.Sprintf("%s is back online - IP: %s", job.Name, remoteIP))
+		models.CreateLogEntry(env.global, job.ID, "Back Online", fmt.Sprintf("%s is back online - IP: %s", job.Name, remoteIP))
 
 		// Perform all back online actions
 		for _, action := range job.BackOnlineActions {
@@ -156,7 +107,7 @@ func (env *Env) jobUpdate(c *gin.Context) {
 
 	// Delete previous (waiting) task
 	if job.TaskId != 0 {
-		if err := env.dispatcher.Cancel(job.TaskId); err != nil {
+		if err := env.global.Dispatcher.Cancel(job.TaskId); err != nil {
 			log.Printf("Error deleting task %d: %s", job.TaskId, err)
 		}
 	}
@@ -164,7 +115,7 @@ func (env *Env) jobUpdate(c *gin.Context) {
 	//newTaskName := job.Name + "_" + time.Now().UTC().Format("2006-01-02_15-04-05")
 
 	// Schedule new task
-	newTaskId, err := env.dispatcher.Schedule(taskQueue.Task{
+	newTaskId, err := env.global.Dispatcher.Schedule(taskQueue.Task{
 		StartIn: time.Second * time.Duration(job.Interval),
 		Fn:      func() { fmt.Println("test") },
 	})
@@ -175,16 +126,5 @@ func (env *Env) jobUpdate(c *gin.Context) {
 	}
 
 	job.TaskId = newTaskId
-	env.db.Save(&job)
-}
-
-func (env *Env) getJobs(ctx context.Context) ([]watchJob, error) {
-	var jobs []watchJob
-
-	result := env.db.Model(&watchJob{}).Find(&jobs)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return jobs, nil
+	env.global.Database.Save(&job)
 }

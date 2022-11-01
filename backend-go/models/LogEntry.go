@@ -1,6 +1,9 @@
-package main
+package models
 
-import "time"
+import (
+	"time"
+	"watchcat/env"
+)
 
 type LogEntry struct {
 	Job       uint `gorm:"foreignkey:JobID"`
@@ -9,7 +12,7 @@ type LogEntry struct {
 	Detail    string
 }
 
-func (env *Env) createLogEntry(job uint, name string, detail string) {
+func CreateLogEntry(env *env.Env, job uint, name string, detail string) {
 	entry := LogEntry{
 		Job:       job,
 		Name:      name,
@@ -17,5 +20,5 @@ func (env *Env) createLogEntry(job uint, name string, detail string) {
 		Detail:    detail,
 	}
 
-	env.db.Create(&entry)
+	env.Database.Create(&entry)
 }
