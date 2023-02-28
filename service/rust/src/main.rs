@@ -1,4 +1,4 @@
-use std::{error, sync::Arc, thread, time::Duration, net::{ToSocketAddrs, SocketAddr}};
+use std::{error, net::{SocketAddr, ToSocketAddrs}, sync::Arc, thread, time::Duration};
 
 // Logging
 use log::{error, info, LevelFilter};
@@ -19,7 +19,7 @@ use clap::Parser;
 )]
 struct Config {
     /// Url where to send requests
-    #[clap(short, parse(try_from_str = Url::parse), long, env)]
+    #[clap(short, long, env)]
     url: Url,
 
     /// HTTP method to use
@@ -31,7 +31,7 @@ struct Config {
     key: Option<String>,
 
     /// Repeat request after interval, with units 'ms', 's', 'm', 'h', e.g. 2m30s
-    #[clap(long, parse(try_from_str = humantime::parse_duration), env)]
+    #[clap(long, value_parser = humantime::parse_duration, env)]
     repeat: Option<Duration>,
 
     /// Timeout for http request in seconds
@@ -66,7 +66,7 @@ fn main() {
 
     // Create HTTP agent
     let agent = ureq::builder()
-        .user_agent(&*format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")))
+        .user_agent(&format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(cfg.timeout.into()))
         .tls_connector(Arc::new(native_tls::TlsConnector::new().unwrap()))
         .build();
@@ -103,7 +103,7 @@ fn main() {
 fn check_dns(interval: u16, domain: &str) {
     info!("Checking DNS");
 
-    let socket_addr = format!("{}:443", domain);
+    let socket_addr = format!("{domain}:443");
 
     loop {
         match socket_addr.to_socket_addrs() {
@@ -142,7 +142,7 @@ fn send_request(agent: &Agent, cfg: &Config) -> Result<Response, Box<dyn error::
 }
 
 fn to_ip_list(ips: &mut dyn Iterator<Item = SocketAddr>) -> String {
-    ips
-        .map(|addr| addr.ip().to_string())
-        .reduce(|a, b| format!("{a}, {b}")).unwrap_or_else(|| "".to_string())
+    ips.map(|addr| addr.ip().to_string())
+        .reduce(|a, b| format!("{a}, {b}"))
+        .unwrap_or_default()
 }
