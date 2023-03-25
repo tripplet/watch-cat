@@ -8,11 +8,8 @@ use simple_logger::SimpleLogger;
 use ureq::{Agent, Response};
 use url::Url;
 
-// Parse cmdline arguments
-use clap::Parser;
-
 // The main config
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 #[clap(
     version,
     about = "Service for sending requests to the watchcat backend."
@@ -52,7 +49,7 @@ struct Config {
 }
 
 fn main() {
-    let cfg = Config::parse(); // Parse arguments
+    let cfg: Config = clap::Parser::parse(); // Parse arguments
 
     // Initialize logger
     SimpleLogger::new().init().unwrap();
@@ -143,6 +140,6 @@ fn send_request(agent: &Agent, cfg: &Config) -> Result<Response, Box<dyn error::
 
 fn to_ip_list(ips: &mut dyn Iterator<Item = SocketAddr>) -> String {
     ips.map(|addr| addr.ip().to_string())
-        .reduce(|a, b| format!("{a}, {b}"))
+        .reduce(|addr1, addr2| format!("{addr1}, {addr2}"))
         .unwrap_or_default()
 }
