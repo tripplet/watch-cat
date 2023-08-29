@@ -1,19 +1,23 @@
-use std::{error, net::{SocketAddr, ToSocketAddrs}, sync::Arc, thread, time::Duration};
+use std::{
+    error,
+    net::{SocketAddr, ToSocketAddrs},
+    thread,
+    time::Duration,
+};
 
 // Logging
 use log::{error, info, LevelFilter};
 use simple_logger::SimpleLogger;
 
 // Network related
-use ureq::{Agent, Response};
-use url::Url;
+use reqwest::{
+    blocking::{Client, Response},
+    Method, Url,
+};
 
 // The main config
 #[derive(Debug, clap::Parser)]
-#[clap(
-    version,
-    about = "Service for sending requests to the watchcat backend."
-)]
+#[clap(version, about = "Service for sending requests to the watchcat backend.")]
 struct Config {
     /// Url where to send requests
     #[clap(short, long, env)]
@@ -21,7 +25,7 @@ struct Config {
 
     /// HTTP method to use
     #[clap(long, default_value = "POST", env)]
-    method: String,
+    method: Method,
 
     /// Secret key to use
     #[clap(long, env, hide_env_values = true)]
@@ -35,7 +39,7 @@ struct Config {
     #[clap(long, default_value = "30", env)]
     timeout: u16,
 
-    /// Check dns every x seconds before first request, for faster inital signal in case of long allowed timeout
+    /// Check dns every x seconds before first request, for faster initial signal in case of long allowed timeout
     #[clap(long, env)]
     checkdns: Option<u16>,
 
@@ -61,13 +65,6 @@ fn main() {
 
     info!("{:?}", &cfg);
 
-    // Create HTTP agent
-    let agent = ureq::builder()
-        .user_agent(&format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")))
-        .timeout(Duration::from_secs(cfg.timeout.into()))
-        .tls_connector(Arc::new(native_tls::TlsConnector::new().unwrap()))
-        .build();
-
     // Preform DNS pre check loop if configured
     match cfg.checkdns {
         Some(interval) if interval > 0 => check_dns(interval, cfg.url.domain().unwrap()),
@@ -75,12 +72,19 @@ fn main() {
     }
 
     loop {
+        // Create HTTP agent
+        let client = Client::builder()
+            .user_agent(&format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")))
+            .timeout(Duration::from_secs(cfg.timeout.into()))
+            .build()
+            .unwrap();
+
         // Send the HTTP request
-        let resp = send_request(&agent, &cfg);
+        let resp = send_request(&client, &cfg);
         match resp {
             Ok(resp) => {
                 let status = resp.status();
-                match resp.into_string() {
+                match resp.text() {
                     Ok(resp_str) => info!("Response {status}: \"{resp_str}\""),
                     Err(err) => error!("Error receiving response: {err:?}"),
                 }
@@ -89,6 +93,8 @@ fn main() {
         }
 
         if let Some(repeat_interval) = cfg.repeat {
+            // Save memory until next request
+            drop(client);
             thread::sleep(repeat_interval);
         } else {
             break;
@@ -96,7 +102,7 @@ fn main() {
     }
 }
 
-/// Try to resolve the domains DNS entry in a loop until it is succesful.
+/// Try to resolve the domains DNS entry in a loop until it is successful.
 fn check_dns(interval: u16, domain: &str) {
     info!("Checking DNS");
 
@@ -120,22 +126,23 @@ fn check_dns(interval: u16, domain: &str) {
 }
 
 /// Send a HTTP request
-fn send_request(agent: &Agent, cfg: &Config) -> Result<Response, Box<dyn error::Error>> {
-    let mut request = agent.request(cfg.method.as_str(), cfg.url.as_str());
+fn send_request(agent: &Client, cfg: &Config) -> Result<Response, Box<dyn error::Error>> {
+    let mut request = agent.request(cfg.method.clone(), cfg.url.as_str());
 
     // Add current uptime as query parameter
     if !cfg.nouptime {
-        request = request.query("uptime", uptime_lib::get()?.as_secs().to_string().as_str());
+        request = request.query(&[("uptime", uptime_lib::get()?.as_secs().to_string().as_str())]);
     }
 
     // Add the secret key as authorization header
     if let Some(key) = &cfg.key {
-        request = request.set("Authorization", format!("Bearer {key}").as_str());
+        request = request.header("Authorization", format!("Bearer {key}").as_str());
     }
 
-    request = request.set("Content-Length", "0");
+    request = request.header("Content-Length", "0");
 
-    Ok(request.call()?)
+    info!("Request: {request:?}");
+    Ok(request.send()?)
 }
 
 fn to_ip_list(ips: &mut dyn Iterator<Item = SocketAddr>) -> String {
