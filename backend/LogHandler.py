@@ -35,4 +35,6 @@ class LogHandler(webapp2.RequestHandler):
 jinja_environment.filters['format_datetime'] = LogHandler.format_datetime
 jinja_environment.filters['add_breakchars'] = LogHandler.add_breakchars
 
-app = webapp2.WSGIApplication([('/log/(\w+)', LogHandler)], debug=False)
+app = webapp2.WSGIApplication([
+    webapp2.Route(r'/log/<job_name>', handler=LogHandler, name="log-handler"),
+], debug=False)

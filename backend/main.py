@@ -27,7 +27,9 @@ def format_timespan(value):
         return str(timedelta(seconds=value))
 
 def add_breakchars(value):
-    if ':' in value:
+    if value is None:
+        return '&nbsp;'
+    elif ':' in value:
         return value.replace(':', ':<wbr/>')
     elif '.' in value:
         return value.replace('.', '.<wbr/>')
