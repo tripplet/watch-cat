@@ -29,7 +29,7 @@ handlers:
   script: TaskQueue.app
   login: admin # secure cronjobs (no access for normal user)
 
-- url: /log/(\w+)
+- url: /log/.*
   script: LogHandler.app
   login: admin # secure
 

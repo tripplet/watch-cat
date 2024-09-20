@@ -16,13 +16,14 @@ import (
 )
 
 type params struct {
-	repeat   string
-	url      string
-	key      string
-	nouptime bool
-	verbose  bool
-	checkdns int
-	timeout  int
+	repeat     string
+	url        string
+	httpMethod string
+	key        string
+	nouptime   bool
+	verbose    bool
+	checkdns   int
+	timeout    int
 }
 
 var config params
@@ -42,7 +43,7 @@ func main() {
 	}
 
 	if config.checkdns > 0 {
-		checkDns()
+		checkDNS()
 	}
 
 	// Immediately send first heartbeat
@@ -57,38 +58,50 @@ func main() {
 	debug.SetGCPercent(1)
 
 	// Repeat heartbeat forever
-	for _ = range time.Tick(delay) {
+	for range time.Tick(delay) {
 		go sendRequestAndCleanup()
 	}
 }
 
 func sendRequest() {
-	url := config.url
+	backendURL := config.url
 
 	if !config.nouptime || config.key != "" {
-		url = url + "?"
+		backendURL = backendURL + "?"
 	}
 
 	if config.key != "" {
-		url = url + fmt.Sprintf("key=%s", config.key)
+		backendURL = backendURL + fmt.Sprintf("key=%s", config.key)
 	}
 
 	if !config.nouptime {
 		if config.key != "" {
-			url = url + "&"
+			backendURL = backendURL + "&"
 		}
 
-		url = url + fmt.Sprintf("uptime=%d", GetUptime())
+		backendURL = backendURL + fmt.Sprintf("uptime=%d", GetUptime())
 	}
 
 	log()
-	log("- Sending:", url)
+	log("- Sending:", backendURL)
 
 	client := &http.Client{
 		Timeout: time.Second * time.Duration(config.timeout),
 	}
 
-	resp, err := client.Get(url)
+	requestURL, err := url.Parse(backendURL)
+	if err != nil {
+		log("  >>", err)
+		return
+	}
+
+	req := http.Request{
+		Method:        config.httpMethod,
+		ContentLength: 0,
+		URL:           requestURL,
+	}
+
+	resp, err := client.Do(&req)
 
 	if err != nil {
 		log("  >>", err)
@@ -114,6 +127,7 @@ func parseParameter() {
 	flag.StringVar(&config.url, "url", "", "Url where to send requests")
 	flag.StringVar(&config.key, "key", "", "Secret key to use")
 	flag.IntVar(&config.timeout, "timeout", 60, "Timeout for http request in seconds")
+	flag.StringVar(&config.httpMethod, "method", "POST", "HTTP Method to use")
 	flag.IntVar(&config.checkdns, "checkdns", 0, "Check dns every x seconds before first request, for faster inital signal in case of long allowed timeout")
 	flag.BoolVar(&config.nouptime, "nouptime", false, "Do not send uptime in heartbeat requests")
 	flag.BoolVar(&config.verbose, "verbose", false, "Verbose mode")
@@ -145,7 +159,7 @@ func parseParameter() {
 	}
 }
 
-func checkDns() {
+func checkDNS() {
 	log("- Checking for DNS...")
 	url, err := url.Parse(config.url)
 	if err != nil {

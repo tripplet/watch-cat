@@ -12,9 +12,19 @@ class JobHandler(webapp2.RequestHandler):
             self.abort(400)
             return
 
+        key = ''
         try:
             key = self.request.get('key')
         except:
+            pass
+
+        # try from the headers
+        if key == '' and 'authorization' in self.request.headers:
+            auth = self.request.headers['authorization']
+            if auth.startswith('Bearer '):
+                key = auth[7:]
+
+        if key == '':
             self.abort(400)
             return
 
