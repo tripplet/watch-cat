@@ -1,19 +1,28 @@
 use std::{
+    borrow::Cow,
     error,
     net::{SocketAddr, ToSocketAddrs},
+    str::FromStr,
     thread,
     time::Duration,
 };
 
-// Logging
+use chrono::{TimeDelta, Utc};
 use log::{error, info, LevelFilter};
-use simple_logger::SimpleLogger;
-
-// Network related
 use reqwest::{
     blocking::{Client, Response},
     Method, Url,
 };
+use simple_logger::SimpleLogger;
+
+type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum UptimeMode {
+    UpTime,
+    BootTime,
+    None,
+}
 
 // The main config
 #[derive(Debug, clap::Parser)]
@@ -43,9 +52,9 @@ struct Config {
     #[clap(long, env)]
     checkdns: Option<u16>,
 
-    /// Do not send uptime in heartbeat requests
+    /// Send uptime in heartbeat requests
     #[clap(long, env)]
-    nouptime: bool,
+    uptime: UptimeMode,
 
     /// Verbose mode
     #[clap(short, long)]
@@ -74,7 +83,7 @@ fn main() {
     loop {
         // Create HTTP agent
         let client = Client::builder()
-            .user_agent(&format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!("watchcat-service/{}", env!("CARGO_PKG_VERSION")))
             .timeout(Duration::from_secs(cfg.timeout.into()))
             .build()
             .unwrap();
@@ -126,12 +135,12 @@ fn check_dns(interval: u16, domain: &str) {
 }
 
 /// Send a HTTP request
-fn send_request(agent: &Client, cfg: &Config) -> Result<Response, Box<dyn error::Error>> {
+fn send_request(agent: &Client, cfg: &Config) -> Result<Response> {
     let mut request = agent.request(cfg.method.clone(), cfg.url.as_str());
 
-    // Add current uptime as query parameter
-    if !cfg.nouptime {
-        request = request.query(&[("uptime", uptime_lib::get()?.as_secs().to_string().as_str())]);
+    // Add current uptime
+    if let Some(info) = cfg.uptime.to_query()? {
+        request = request.query(&[info]);
     }
 
     // Add the secret key as authorization header
@@ -149,4 +158,36 @@ fn to_ip_list(ips: &mut dyn Iterator<Item = SocketAddr>) -> String {
     ips.map(|addr| addr.ip().to_string())
         .reduce(|addr1, addr2| format!("{addr1}, {addr2}"))
         .unwrap_or_default()
+}
+
+impl FromStr for UptimeMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "NONE" => Ok(UptimeMode::None),
+            "UPTIME" => Ok(UptimeMode::UpTime),
+            "BOOTTIME" | "BOOT" => Ok(UptimeMode::BootTime),
+            _ => Err(format!("Invalid value: {s} for UptimeMode")),
+        }
+    }
+}
+
+impl UptimeMode {
+    fn to_query(self) -> Result<Option<(Cow<'static, str>, String)>> {
+        match self {
+            UptimeMode::UpTime => {
+                let uptime = uptime_lib::get()?;
+                Ok(Some((Cow::Borrowed("uptime"), uptime.as_secs().to_string())))
+            }
+            UptimeMode::BootTime => {
+                let boot = Utc::now()
+                    .checked_sub_signed(TimeDelta::from_std(uptime_lib::get()?)?)
+                    .ok_or("Unable to get boot time")?;
+
+                Ok(Some((Cow::Borrowed("boot"), boot.to_rfc3339())))
+            }
+            UptimeMode::None => Ok(None),
+        }
+    }
 }
