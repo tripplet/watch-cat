@@ -1,17 +1,17 @@
 [package]
 name = "watchcat-service"
-version = "1.4.0"
+version = "1.4.1"
 authors = ["Tobias Tangemann <tobias@tangemann.org>"]
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.38"
-clap = { version = "4.5.20", features = ["derive", "env"] }
-log = "0.4.22"
+chrono = "0.4.39"
+clap = { version = "4.5.26", features = ["derive", "env"] }
+log = "0.4.25"
 simple_logger = { version = "5.0.0", default-features = false }
 uptime_lib = "0.3.1"
 humantime = "2.1.0"
-reqwest = { version = "0.12.8", default-features = false, features = [
+reqwest = { version = "0.12.12", default-features = false, features = [
     "blocking",
     "rustls-tls-native-roots",
 ] }
