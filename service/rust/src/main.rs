@@ -62,15 +62,19 @@ struct Config {
 }
 
 fn main() {
-    let cfg: Config = clap::Parser::parse(); // Parse arguments
+    let cfg: Config = clap::Parser::parse();
 
     // Initialize logger
-    SimpleLogger::new().init().unwrap();
-    if cfg.verbose {
-        log::set_max_level(LevelFilter::Info);
-    } else {
-        log::set_max_level(LevelFilter::Warn);
+    if let Err(e) = SimpleLogger::new().init() {
+        eprintln!("Failed to initialize logger: {e}");
+        return;
     }
+
+    log::set_max_level(if cfg.verbose {
+        LevelFilter::Info
+    } else {
+        LevelFilter::Warn
+    });
 
     info!("{:?}", &cfg);
 
@@ -113,7 +117,7 @@ fn main() {
 
 /// Try to resolve the domains DNS entry in a loop until it is successful.
 fn check_dns(interval: u16, domain: &str) {
-    info!("Checking DNS");
+    info!("Checking DNS for {domain}");
 
     let socket_addr = format!("{domain}:443");
 
@@ -154,10 +158,10 @@ fn send_request(agent: &Client, cfg: &Config) -> Result<Response> {
     Ok(request.send()?)
 }
 
-fn to_ip_list(ips: &mut dyn Iterator<Item = SocketAddr>) -> String {
+fn to_ip_list(ips: impl Iterator<Item = SocketAddr>) -> String {
     ips.map(|addr| addr.ip().to_string())
-        .reduce(|addr1, addr2| format!("{addr1}, {addr2}"))
-        .unwrap_or_default()
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 impl FromStr for UptimeMode {
