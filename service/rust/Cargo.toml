@@ -6,12 +6,12 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.40"
-clap = { version = "4.5.32", features = ["derive", "env"] }
-log = "0.4.26"
-simple_logger = { version = "5.0.0", default-features = false }
-uptime_lib = "0.3.1"
-humantime = "2.2.0"
-reqwest = { version = "0.12.15", default-features = false, features = [
+clap = { version = "4.5", features = ["derive", "env"] }
+log = "0.4"
+simple_logger = { version = "5.0", default-features = false }
+uptime_lib = "0.3"
+humantime = "2.2"
+reqwest = { version = "0.12", default-features = false, features = [
     "blocking",
     "rustls-tls-native-roots",
 ] }
