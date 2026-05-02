@@ -159,9 +159,7 @@ fn send_request(agent: &Client, cfg: &Config) -> Result<Response> {
 }
 
 fn to_ip_list(ips: impl Iterator<Item = SocketAddr>) -> String {
-    ips.map(|addr| addr.ip().to_string())
-        .collect::<Vec<_>>()
-        .join(", ")
+    ips.map(|addr| addr.ip().to_string()).collect::<Vec<_>>().join(", ")
 }
 
 impl FromStr for UptimeMode {
